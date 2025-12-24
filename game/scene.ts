@@ -28,7 +28,7 @@ let onWorldChangeCallback: (name: string, msg: string) => void;
 let hudArm: MechanicalArm;
 
 // State
-let currentWorld = 'deskview';
+let currentWorld = 'campground';
 const keys = { w: false, a: false, s: false, d: false };
 const playerState = {
     position: new THREE.Vector3(0, 1.5, 0),
@@ -85,7 +85,7 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
     createPlayer();
 
     // Initial world setup
-    switchWorld('deskview', false);
+    switchWorld(currentWorld, false);
 
     window.addEventListener('resize', onWindowResize);
     window.addEventListener('keydown', onKeyDown);

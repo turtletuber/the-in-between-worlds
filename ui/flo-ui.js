@@ -28,6 +28,13 @@ export default class FloUI {
         this.hue = Math.random() * 360;
 
         this.createAvatar();
+
+        // Global mouse tracking
+        window.addEventListener('mousemove', (e) => {
+            window.mouseX = e.clientX;
+            window.mouseY = e.clientY;
+        });
+
         this.animate();
     }
 
@@ -200,6 +207,8 @@ export default class FloUI {
         this.hue = (this.hue + 0.2) % 360;
         this.updateColors();
 
+        this.updateEyes();
+
         requestAnimationFrame(() => this.animate());
     }
 
@@ -299,6 +308,86 @@ export default class FloUI {
         if (window.radialMenu && window.radialMenu.positionOptionsContainer) {
             window.radialMenu.positionOptionsContainer();
         }
+    }
+
+    updateEyes() {
+        if (!this.leftPupil || !this.rightPupil || this.isBlinking) return;
+
+        const now = Date.now();
+        const eyeRadius = 3; // Max pupil offset from center
+        let tx = 0, ty = 0;
+
+        // Decide state: Follow Mouse vs Wander
+        // "Attention span": Flo looks at mouse for a bit, then looks away
+        if (!this.eyeState) {
+            this.eyeState = {
+                mode: 'wander', // wander, follow
+                nextSwitch: now + 2000,
+                wanderTarget: { x: 0, y: 0 }
+            };
+        }
+
+        if (now > this.eyeState.nextSwitch) {
+            // Switch modes
+            if (this.eyeState.mode === 'wander') {
+                // 60% chance to look at mouse
+                this.eyeState.mode = Math.random() < 0.6 ? 'follow' : 'wander';
+                this.eyeState.nextSwitch = now + 1000 + Math.random() * 4000;
+            } else {
+                // Stop staring, look somewhere else
+                this.eyeState.mode = 'wander';
+                this.eyeState.nextSwitch = now + 500 + Math.random() * 2000;
+                // Pick new random spot to look at
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random();
+                this.eyeState.wanderTarget = { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist };
+            }
+        }
+
+        if (this.eyeState.mode === 'follow') {
+            // Track mouse relative to Flo's center on screen
+            if (window.mouseX !== undefined && window.mouseY !== undefined) {
+                // Calculate Flo's center (approx based on DOM)
+                const fx = this.position.x + 40;
+                const fy = this.position.y + 40;
+
+                let dx = window.mouseX - fx;
+                let dy = window.mouseY - fy;
+
+                // Normalize
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0) {
+                    dx /= dist;
+                    dy /= dist;
+                }
+
+                // Scale movement dampening
+                // If cursor is super far, pupils shouldn't be pinned to edge 100% of time? 
+                // Actually pinned looks like looking at it.
+                tx = dx;
+                ty = dy;
+            }
+        } else {
+            // Wander
+            tx = this.eyeState.wanderTarget.x;
+            ty = this.eyeState.wanderTarget.y;
+        }
+
+        // Lerp current pupil position
+        if (!this.pupilPos) this.pupilPos = { x: 0, y: 0 };
+
+        // Smooth movement
+        this.pupilPos.x += (tx - this.pupilPos.x) * 0.1;
+        this.pupilPos.y += (ty - this.pupilPos.y) * 0.1;
+
+        // Apply (assuming pupil size 8px inside 14px eye -> 3px padding on sides allows 3px movement)
+        const x = this.pupilPos.x * eyeRadius;
+        const y = this.pupilPos.y * eyeRadius;
+
+        // Base top/left is 3px. Add offset.
+        const rule = `translate(${x}px, ${y}px)`;
+        this.leftPupil.style.transform = rule;
+        this.rightPupil.style.transform = rule;
     }
 
     pickNewDirection() {
