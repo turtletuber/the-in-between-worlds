@@ -84,6 +84,27 @@ export default class RadialMenu {
       this.optionsContainer.appendChild(option);
     });
 
+    // Create selection label
+    this.selectionLabel = document.createElement('div');
+    this.selectionLabel.className = 'radial-menu-label';
+    this.selectionLabel.style.cssText = `
+        position: absolute;
+        width: 200px;
+        text-align: center;
+        top: -60px; /* Position above Flo */
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #00ffff;
+        text-shadow: 0 0 5px #00ffff;
+        font-size: 14px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    `;
+    this.optionsContainer.appendChild(this.selectionLabel);
+
     // Setup event listeners
     this.setupEventListeners();
 
@@ -124,6 +145,7 @@ export default class RadialMenu {
     option.innerHTML = config.icon || '❓';
     option.dataset.panel = config.panel || '';
     option.dataset.action = config.action || '';
+    option.dataset.label = config.label || '';
     option.dataset.index = index;
 
     option.style.cssText = `
@@ -152,7 +174,7 @@ export default class RadialMenu {
     // Click handler
     option.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.handleOptionClick(config, index);
+      this.handleOptionClick(config.label ? config : { ...config, label: this.options[index]?.dataset.label }, index);
     });
 
     return option;
@@ -331,6 +353,13 @@ export default class RadialMenu {
         option.classList.add('selected');
         this.currentOptionIndex = index;
 
+        // Update Label
+        if (this.selectionLabel) {
+          const label = option.dataset.label || 'UNKNOWN';
+          this.selectionLabel.textContent = `[ ${label.toUpperCase()} ]`;
+          this.selectionLabel.style.opacity = '1';
+        }
+
         // Debug mode: Log selection changes
         if (this.DEBUG_MODE && option.dataset.wasSelected !== 'true') {
           console.log(
@@ -395,6 +424,7 @@ export default class RadialMenu {
 
     // Call callback if provided
     if (this.onOptionSelect) {
+      // Ensure we pass the full config which includes panel/label
       this.onOptionSelect(config, index);
     }
 
@@ -413,6 +443,7 @@ export default class RadialMenu {
 
     this.menuExpanded = true;
     this.menuContainer.classList.add('expanded');
+    this.positionOptionsContainer(); // Sync position immediately
 
     // Emerge animation: items come from behind Flo (scale 0) and grow outward
     this.options.forEach((option, index) => {
@@ -462,6 +493,8 @@ export default class RadialMenu {
         (this.options.length - index) * 30
       ); // Reverse order
     });
+
+    if (this.selectionLabel) this.selectionLabel.style.opacity = '0';
 
     if (this.onCollapse) {
       this.onCollapse();

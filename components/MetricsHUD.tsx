@@ -11,6 +11,7 @@ export const MetricsHUD: React.FC = () => {
     const [ram, setRam] = useState(0);
     const [net, setNet] = useState<NetworkMetrics>({ down: 0, up: 0 });
     const [tokens, setTokens] = useState(1);
+    const [latency, setLatency] = useState(0);
 
     // Simulate metrics updates
     useEffect(() => {
@@ -28,13 +29,24 @@ export const MetricsHUD: React.FC = () => {
                 up: parseFloat((Math.random() * 0.5).toFixed(1))
             });
 
-            // Token drift
-            if (Math.random() > 0.9) {
-                setTokens(prev => prev + Math.floor(Math.random() * 5));
-            }
         }, 1000);
 
-        return () => clearInterval(interval);
+        // Real Latency & Token Listeners
+        const handleLatency = (e: CustomEvent) => {
+            setLatency(e.detail.latency);
+        };
+        const handleTokens = (e: CustomEvent) => {
+            setTokens(prev => prev + e.detail.tokens);
+        };
+
+        window.addEventListener('ai-latency', handleLatency as EventListener);
+        window.addEventListener('ai-tokens', handleTokens as EventListener);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('ai-latency', handleLatency as EventListener);
+            window.removeEventListener('ai-tokens', handleTokens as EventListener);
+        };
     }, []);
 
     // Helper for bar visualization
@@ -86,19 +98,27 @@ export const MetricsHUD: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Token Usage Block */}
-                <div className="bg-black/40 backdrop-blur-sm p-3 rounded-lg border border-white/10 shadow-lg">
-                    <div className="text-[10px] text-gray-400 mb-1">TOKEN.USAGE</div>
-                    <div className="flex justify-between items-end">
-                        <span className="text-yellow-400 text-lg font-bold">{tokens.toLocaleString()}</span>
-                        <span className="text-[10px] text-gray-500 mb-1">active</span>
-                    </div>
-                    <div className="w-full h-0.5 bg-gray-800 mt-1">
-                        <div className="h-full bg-yellow-500/50 w-full animate-pulse" />
-                    </div>
+            </div>
+
+            {/* Token Usage Block */}
+            <div className="bg-black/40 backdrop-blur-sm p-3 rounded-lg border border-white/10 shadow-lg">
+                <div className="text-[10px] text-gray-400 mb-1">TOKEN.USAGE</div>
+                <div className="flex justify-between items-end">
+                    <span className="text-yellow-400 text-lg font-bold">{tokens.toLocaleString()}</span>
+                    <span className="text-[10px] text-gray-500 mb-1">active</span>
                 </div>
 
+                {/* Latency Metric */}
+                <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
+                    <span className="text-gray-400 text-[10px]">LATENCY</span>
+                    <span className="text-white font-mono">{latency}ms</span>
+                </div>
+
+                <div className="w-full h-0.5 bg-gray-800 mt-2">
+                    <div className="h-full bg-yellow-500/50 w-full animate-pulse" />
+                </div>
             </div>
         </div>
     );
 };
+

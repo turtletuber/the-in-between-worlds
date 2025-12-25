@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mat, addWorldElement, addGradientSky, setupWorldLighting, createToggleableFire } from './common';
+import { mat, addWorldElement, addGradientSky, setupWorldLighting, createToggleableFire, createWeatherStation } from './common';
 
 const createWaterfall = (height: number, width: number, scene: THREE.Scene) => {
     const group = new THREE.Group();
@@ -263,5 +263,8 @@ export function buildWaterfallWorld(scene: THREE.Scene) {
     };
     addWorldElement(scene, particles);
 
-
+    // Add Weather Station
+    const weatherStation = createWeatherStation();
+    weatherStation.position.set(5, -2, 5); // Near the mound
+    addWorldElement(scene, weatherStation);
 }

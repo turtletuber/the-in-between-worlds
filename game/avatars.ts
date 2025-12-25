@@ -14,29 +14,17 @@ export function createAvatars(scene: THREE.Scene) {
 
     const avatarConfigs = [
         {
-            name: 'Dragon',
-            Class: DragonAvatar,
-            pos: [-3, 2, -2],
-            personality: {
-                preferredWorlds: ['caves', 'mountains'],
-                interests: ['singingCrystal', 'starlightStalactite', 'depthMemoryStone', 'dataNode'],
-                movementSpeed: 0.015,
-                wanderRadius: 8,
-                investigationTime: 5,
-                curiosity: 0.8
-            }
-        },
-        {
-            name: 'Robot',
+            name: 'Auto', // Formerly Robot
             Class: RobotAvatar,
             pos: [3, 2, -2],
             personality: {
-                preferredWorlds: ['caves', 'mountains', 'CosmicHub'],
-                interests: ['singingCrystal', 'dataNode', 'dataCrystal', 'echoC hamber'],
+                preferredWorlds: ['forest', 'CosmicHub', 'campground'], // Forest = Sequoia
+                interests: ['codeShard', 'automationMatrix', 'logicGate', 'sequoiaRoot'],
                 movementSpeed: 0.012,
                 wanderRadius: 10,
                 investigationTime: 8,
-                curiosity: 0.9
+                curiosity: 0.9,
+                domain: 'Code, Automation'
             }
         },
         {
@@ -44,26 +32,28 @@ export function createAvatars(scene: THREE.Scene) {
             Class: PandaAvatar,
             pos: [-3, 2, 2],
             personality: {
-                preferredWorlds: ['forest', 'campground'],
+                preferredWorlds: ['waterfalls', 'campground'],
                 interests: ['meditationStone', 'singingSequoia', 'harmonicOrb', 'eternalEmber'],
                 movementSpeed: 0.008,
                 wanderRadius: 6,
                 investigationTime: 12,
-                curiosity: 0.4
+                curiosity: 0.4,
+                domain: 'Mindfulness, UX Research, Empathy'
             }
         },
         {
-            name: 'Ghost',
+            name: 'Ghosty', // Renamed from Ghost
             Class: GhostAvatar,
             pos: [3, 2, 2],
             opacity: 0.9,
             personality: {
-                preferredWorlds: ['campground', 'CosmicHub'],
+                preferredWorlds: ['caves', 'CosmicHub'],
                 interests: ['memoryFragment', 'shelterOfSolitude', 'cosmicIsland'],
                 movementSpeed: 0.01,
                 wanderRadius: 12,
                 investigationTime: 6,
-                curiosity: 0.6
+                curiosity: 0.6,
+                domain: 'Memory Retrieval'
             }
         },
         {
@@ -71,12 +61,13 @@ export function createAvatars(scene: THREE.Scene) {
             Class: AlienAvatar,
             pos: [0, 2, -4],
             personality: {
-                preferredWorlds: ['sky', 'CosmicHub'],
+                preferredWorlds: ['mountains', 'CosmicHub', 'sky'],
                 interests: ['dataCrystal', 'dataNode', 'observationPlatform', 'mistStream', 'cosmicIsland', 'MechanicalArm'],
                 movementSpeed: 0.013,
                 wanderRadius: 15,
                 investigationTime: 10,
-                curiosity: 1.0
+                curiosity: 1.0,
+                domain: 'Network, Research'
             }
         },
         {
@@ -88,7 +79,22 @@ export function createAvatars(scene: THREE.Scene) {
                 interests: ['glowingFern', 'lightMote'],
                 movementSpeed: 0.02,
                 wanderRadius: 8,
-                curiosity: 0.7
+                curiosity: 0.7,
+                domain: 'Persona, Writing, Chat'
+            }
+        },
+        {
+            name: 'Dragon',
+            Class: DragonAvatar,
+            pos: [-3, 2, -2],
+            personality: {
+                preferredWorlds: ['crops', 'caves', 'mountains'],
+                interests: ['singingCrystal', 'starlightStalactite', 'depthMemoryStone', 'dataNode'],
+                movementSpeed: 0.015,
+                wanderRadius: 8,
+                investigationTime: 5,
+                curiosity: 0.8,
+                domain: 'Creative Compute'
             }
         }
     ];

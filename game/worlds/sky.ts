@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mat, addWorldElement, addGradientSky, setupWorldLighting } from './common';
+import { mat, addWorldElement, addGradientSky, setupWorldLighting, createWeatherStation } from './common';
 
 export function buildSkyIslandWorld(scene: THREE.Scene) {
     addGradientSky(scene, 0xffc1e3, 0x80d8ff);
@@ -39,4 +39,9 @@ export function buildSkyIslandWorld(scene: THREE.Scene) {
             addWorldElement(scene, step);
         }
     });
+
+    // Add Weather Station
+    const weatherStation = createWeatherStation();
+    weatherStation.position.set(-15, 0, -5);
+    addWorldElement(scene, weatherStation);
 }

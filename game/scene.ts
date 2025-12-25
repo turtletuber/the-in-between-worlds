@@ -13,7 +13,7 @@ import {
 } from './worlds';
 import { createAvatars, updateAvatarBehaviors, disposeAvatars } from './avatars';
 import { CosmicHub } from './cosmic';
-import { MechanicalArm } from './MechanicalArm';
+import { SidePanelProjector } from './SidePanelProjector';
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -25,7 +25,7 @@ let player: THREE.Group;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2;
 let onWorldChangeCallback: (name: string, msg: string) => void;
-let hudArm: MechanicalArm;
+let hudArm: SidePanelProjector;
 
 // State
 let currentWorld = 'campground';
@@ -80,7 +80,7 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
     cosmicHub = new CosmicHub(scene);
 
     // Initialize HUD Arm
-    hudArm = new MechanicalArm(scene);
+    hudArm = new SidePanelProjector(scene);
     hudArm.handleResize(window.innerWidth, window.innerHeight);
 
     createPlayer();
@@ -93,6 +93,24 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('click', onClick);
+
+    // Listen for UI events from Flo/Radial Menu
+    window.addEventListener('open-side-panel', ((e: CustomEvent) => {
+        if (hudArm) {
+            // Open the arm if closed
+            if (!hudArm.isDeployed) {
+                hudArm.deploy();
+            }
+            // Update the content based on the panel selected
+            hudArm.setPanelContent(e.detail.panel);
+        }
+    }) as EventListener);
+
+    window.addEventListener('close-side-panel', (() => {
+        if (hudArm && hudArm.isDeployed) {
+            hudArm.retract();
+        }
+    }) as EventListener);
 
     try {
         createAvatars(scene);
@@ -181,7 +199,10 @@ function animate() {
     renderer.render(scene, camera);
 
     // Render HUD on top
-    if (hudArm) hudArm.render(renderer);
+    if (hudArm) {
+        hudArm.update(delta);
+        hudArm.render(renderer);
+    }
 }
 
 function updatePlayerMovement(delta: number) {
@@ -298,6 +319,19 @@ function onWindowResize() {
 }
 
 function onKeyDown(e: KeyboardEvent) {
+    // 1. Check if we are typing in the HUD Chat (Handled by React Overlay now)
+    // We only capture Escape here safely
+    if (hudArm && hudArm.isDeployed) {
+        if (e.key === 'Escape') {
+            hudArm.retract();
+            return;
+        }
+        // If the overlay is open, we might want to prevent other game hotkeys?
+        // But the React Input stops propagation.
+        // Let's rely on that.
+    }
+
+    // 2. Normal Game Inputs (only if not chatting)
     const key = e.key.toLowerCase();
     if (key === 'w') keys.w = true;
     if (key === 'a') keys.a = true;
@@ -307,6 +341,25 @@ function onKeyDown(e: KeyboardEvent) {
     if (key === 'm' || key === 'h') {
         if (hudArm) hudArm.toggle();
     }
+    // 'L' toggles Low Power Mode (Performance)
+    if (key === 'l') {
+        const isLow = renderer.shadowMap.enabled === true; // If currently true, we are going to false (Low Power)
+
+        console.log(`Toggling Performance Mode: ${isLow ? 'Low Power' : 'High Quality'}`);
+
+        renderer.shadowMap.enabled = !isLow;
+        renderer.setPixelRatio(isLow ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
+
+        // Re-compile materials (needed when toggling shadows)
+        scene.traverse((obj) => {
+            if (obj instanceof THREE.Mesh && obj.material) {
+                obj.material.needsUpdate = true;
+            }
+        });
+
+        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, isLow ? "Low Power Mode Enabled" : "High Quality Restored");
+    }
+
     const worlds: { [key: string]: string } = {
         '0': 'deskview', '1': 'CosmicHub', '2': 'campground',
         '3': 'mountains', '4': 'forest', '5': 'caves', '6': 'sky',
@@ -369,52 +422,82 @@ function onClick(event: MouseEvent) {
                 const fireflies = scene.children.find(c => c.userData.isFireflies);
 
                 if (currentWorld === 'campground') {
-                    const isMoody = scene.fog?.color.getHex() === 0x050515;
-                    if (isMoody) {
-                        // Switch to Sunny Day
-                        scene.background = new THREE.Color(0x87ceeb);
-                        scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
-                        if (light) {
-                            light.color.setHex(0xffffff);
-                            light.groundColor.setHex(0x4a7c59);
-                            light.intensity = 1.0;
-                        }
-                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "It's a beautiful day!");
-                    } else {
-                        // Switch back to Moody Night
-                        scene.background = new THREE.Color(0x0a1033);
-                        scene.fog = new THREE.FogExp2(0x050515, 0.02);
-                        if (light) {
-                            light.color.setHex(0x4466ff);
-                            light.groundColor.setHex(0x050515);
-                            light.intensity = 0.6;
-                        }
-                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The night is quiet...");
-                    }
-                } else if (currentWorld === 'forest') {
-                    const isNight = scene.fog?.color.getHex() === 0x022c22;
+                    // Check if currently "Night" (Dark Blue/Black)
+                    const isNight = scene.fog?.color.getHex() === 0x050515;
+
                     if (isNight) {
-                        // Switch to Misty Day
-                        scene.background = new THREE.Color(0xdbeafe);
-                        scene.fog = new THREE.FogExp2(0xdbeafe, 0.02);
+                        // Switch to Golden Evening (Bright/Warm)
+                        scene.background = new THREE.Color(0xffaa55); // Sunset Orange
+                        scene.fog = new THREE.FogExp2(0xffaa55, 0.012);
                         if (light) {
-                            light.color.setHex(0xffffff);
-                            light.groundColor.setHex(0x2e7d32);
-                            light.intensity = 0.8;
+                            light.color.setHex(0xffddaa); // Warm Sun
+                            light.groundColor.setHex(0x664422);
+                            light.intensity = 1.2;
                         }
-                        if (fireflies) fireflies.visible = false;
-                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Morning mist rolls in...");
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "A golden sunset warms the camp...");
                     } else {
-                        // Switch to Deep Forest Night
-                        scene.background = new THREE.Color(0x052e16);
-                        scene.fog = new THREE.FogExp2(0x022c22, 0.03);
+                        // Switch back to Dark Night (Darker)
+                        scene.background = new THREE.Color(0x020205); // Deep Void
+                        scene.fog = new THREE.FogExp2(0x050515, 0.025); // Dense Fog
                         if (light) {
-                            light.color.setHex(0x4a7c59);
-                            light.groundColor.setHex(0x022c22);
+                            light.color.setHex(0x223388); // Moonlight
+                            light.groundColor.setHex(0x020211);
                             light.intensity = 0.4;
                         }
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Darkness falls...");
+                    }
+                } else if (currentWorld === 'forest') {
+                    // Check if currently "Night" (Deep Green/Black)
+                    const isNight = scene.fog?.color.getHex() === 0x022c22;
+
+                    if (isNight) {
+                        // Switch to Golden Afternoon (Bright)
+                        scene.background = new THREE.Color(0xfde68a); // Pale Gold
+                        scene.fog = new THREE.FogExp2(0xfde68a, 0.015);
+                        if (light) {
+                            light.color.setHex(0xfff7ed);
+                            light.groundColor.setHex(0x4d7c0f);
+                            light.intensity = 1.1;
+                        }
+                        if (fireflies) fireflies.visible = false;
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Sunlight filters through the leaves...");
+                    } else {
+                        // Switch to Deep Forest Night (Darker)
+                        scene.background = new THREE.Color(0x020402); // Almost Black
+                        scene.fog = new THREE.FogExp2(0x022c22, 0.04); // Heavy Fog
+                        if (light) {
+                            light.color.setHex(0x1e3a8a); // Blue Moonlight
+                            light.groundColor.setHex(0x020202);
+                            light.intensity = 0.3;
+                        }
                         if (fireflies) fireflies.visible = true;
-                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The forest comes alive at night...");
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The ancient forest sleeps...");
+                    }
+                } else {
+                    // GENERIC Islands (Sky, Cave, Mountains, etc.) - Simple Day/Night Toggle
+                    // Check if night (dark blue background)
+                    const isNight = scene.background instanceof THREE.Color && scene.background.getHex() === 0x050510;
+
+                    if (isNight) {
+                        // Switch to Day
+                        scene.background = new THREE.Color(0x87ceeb); // Sky Blue
+                        scene.fog = new THREE.FogExp2(0x87ceeb, 0.005);
+                        if (light) {
+                            light.color.setHex(0xffffff);
+                            light.groundColor.setHex(0xaaaaaa);
+                            light.intensity = 1.0;
+                        }
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Sunlight floods the island...");
+                    } else {
+                        // Switch to Night
+                        scene.background = new THREE.Color(0x050510); // Deep Space Blue
+                        scene.fog = new THREE.FogExp2(0x050510, 0.015);
+                        if (light) {
+                            light.color.setHex(0x4455ff);
+                            light.groundColor.setHex(0x222222);
+                            light.intensity = 0.6;
+                        }
+                        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The stars return...");
                     }
                 }
             }
@@ -482,6 +565,12 @@ function switchWorld(worldName: string, notify: boolean = true) {
     }
 
     currentWorld = worldName;
+
+    // Update HUD Arm context
+    if (hudArm) {
+        hudArm.setCurrentWorld(currentWorld);
+    }
+
     scene.background = new THREE.Color(0x050510);
     scene.fog = new THREE.FogExp2(0x050510, 0.015);
 

@@ -32,9 +32,33 @@ export const FloOverlay: React.FC = () => {
             radialMenu.init(flo.container, menuOptions);
         }
 
-        // Log when options are selected
+        // Handle menu selection
+        // Handle menu selection
         radialMenu.onOptionSelect = (option: any) => {
             console.log('Selected:', option.label);
+
+            if (option.panel === 'settings') {
+                window.dispatchEvent(new CustomEvent('open-admin-panel'));
+            } else if (option.panel === 'chat') {
+                // Trigger the Mechanical Arm / Side Panel
+                const event = new CustomEvent('open-side-panel', {
+                    detail: {
+                        panel: option.panel,
+                        label: option.label
+                    }
+                });
+                window.dispatchEvent(event);
+            } else {
+                console.log('Interaction not implemented for:', option.label);
+                // For now, open side panel for others too just to be responsive
+                const event = new CustomEvent('open-side-panel', {
+                    detail: {
+                        panel: option.panel,
+                        label: option.label
+                    }
+                });
+                window.dispatchEvent(event);
+            }
         };
 
         return () => {

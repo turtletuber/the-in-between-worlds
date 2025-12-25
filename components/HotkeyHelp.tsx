@@ -5,6 +5,7 @@ const HOTKEYS = [
     { key: 'Click', desc: 'Interact / Walk' },
     { key: 'H', desc: 'Toggle HUD' },
     { key: 'M', desc: 'Mech Arm' },
+    { key: 'L', desc: 'Low Power' },
     { key: '0 - 8', desc: 'Teleport' },
 ];
 

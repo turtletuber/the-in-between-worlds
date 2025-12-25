@@ -178,3 +178,70 @@ export const createToggleableFire = (scale = 1) => {
   root.userData.isClickable = true;
   return root;
 };
+
+export const createWeatherStation = () => {
+  const group = new THREE.Group();
+
+  // Base Stand
+  const standGeo = new THREE.CylinderGeometry(0.1, 0.3, 2, 8);
+  const standMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.6, roughness: 0.2 });
+  const stand = new THREE.Mesh(standGeo, standMat);
+  stand.position.y = 1;
+  group.add(stand);
+
+  // Rotating Anemometer (Cups)
+  const cupsGroup = new THREE.Group();
+  cupsGroup.position.y = 2.0;
+
+  const armGeo = new THREE.BoxGeometry(1.2, 0.05, 0.05);
+  const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const arm1 = new THREE.Mesh(armGeo, armMat);
+  const arm2 = new THREE.Mesh(armGeo, armMat);
+  arm2.rotation.y = Math.PI / 2;
+  cupsGroup.add(arm1);
+  cupsGroup.add(arm2);
+
+  // Cups
+  const cupGeo = new THREE.SphereGeometry(0.2, 8, 8, 0, Math.PI);
+  const cupMat = new THREE.MeshStandardMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+
+  [[0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]].forEach(([x, z], i) => {
+    const cup = new THREE.Mesh(cupGeo, cupMat);
+    cup.position.set(x, 0, z);
+    // orient cups to catch wind
+    cup.rotation.y = i * (Math.PI / 2) + Math.PI / 2;
+    cup.rotation.x = Math.PI / 2;
+    cupsGroup.add(cup);
+  });
+
+  cupsGroup.userData = { rotateSpeed: 4.0 };
+  group.add(cupsGroup);
+
+  // Weather Vane (Arrow)
+  const arrowGroup = new THREE.Group();
+  arrowGroup.position.y = 1.7;
+  const arrowBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.05), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
+  const arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 4), new THREE.MeshStandardMaterial({ color: 0xffff00 }));
+  arrowHead.rotation.z = -Math.PI / 2;
+  arrowHead.position.x = 0.5;
+  arrowGroup.add(arrowBody);
+  arrowGroup.add(arrowHead);
+  arrowGroup.userData = { bobSpeed: 1, bobHeight: 0 }; // Just for potential interaction
+  // Allow arrow to rotate based on time to simulate wind direction change?
+  arrowGroup.rotation.y = Math.PI / 4;
+  group.add(arrowGroup);
+
+  // Add interaction data
+  group.userData.isWeatherStation = true;
+  group.userData.isClickable = true;
+
+  // Add hitbox
+  const hitbox = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.8, 0.8, 3, 8),
+    new THREE.MeshBasicMaterial({ visible: false })
+  );
+  hitbox.position.y = 1.5;
+  group.add(hitbox);
+
+  return group;
+};

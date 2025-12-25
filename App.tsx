@@ -2,6 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { initScene, disposeScene } from './game/scene';
 
 import { FloOverlay } from './components/FloOverlay';
+import { SidePanelOverlay } from './components/SidePanelOverlay';
+import { AdminPanel } from './components/AdminPanel';
+
+
 import { MetricsHUD } from './components/MetricsHUD';
 import { HintsDropdown } from './components/HintsDropdown';
 import { HotkeyHelp } from './components/HotkeyHelp';
@@ -86,6 +90,8 @@ export default function App() {
 
           {/* UI Layer */}
           <FloOverlay />
+          <SidePanelOverlay />
+          <AdminPanel />
 
           {/* HUD Layer */}
           <div className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}>

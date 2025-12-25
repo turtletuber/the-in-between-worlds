@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LLM Admin</title>
+  <style>
+    body { font-family: monospace; max-width: 1200px; margin: 20px auto; padding: 20px; background: #1a1a1a; color: #eee; }
+    h2 { color: #4a9eff; border-bottom: 2px solid #333; padding-bottom: 10px; }
+    textarea { width: 100%; padding: 10px; font-family: monospace; background: #2a2a2a; color: #eee; border: 1px solid #444; min-height: 100px; }
+    button { padding: 10px 20px; background: #4a9eff; color: #fff; border: none; cursor: pointer; margin: 5px; }
+    button:hover { background: #3a8eef; }
+    .section { margin: 30px 0; padding: 20px; background: #252525; border: 1px solid #333; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #333; }
+    th { background: #2a2a2a; }
+    .del { background: #ff4444; padding: 5px 10px; }
+    .del:hover { background: #dd3333; }
+    .count { color: #888; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>LLM Control Panel</h1>
+
+  <div class="section">
+    <h2>System Prompt</h2>
+    <textarea id="prompt"></textarea>
+    <button onclick="savePrompt()">Save Prompt</button>
+    <button onclick="testPrompt()">Test</button>
+    <div id="test-result" style="margin-top: 10px; color: #6f6;"></div>
+  </div>
+
+  <div class="section">
+    <h2>Memory Store <span class="count" id="mem-count"></span></h2>
+    <div style="margin-bottom: 10px;">
+      <input id="mem-text" placeholder="Add memory..." style="width: 70%; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #eee;">
+      <input id="mem-thread" placeholder="thread_id" value="default" style="width: 15%; padding: 8px; background: #2a2a2a; border: 1px solid #444; color: #eee;">
+      <button onclick="addMemory()">Add</button>
+    </div>
+    <table id="memories">
+      <thead><tr><th>ID</th><th>Thread</th><th>Text</th><th>Created</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3001';
+
+    async function loadPrompt() {
+      const r = await fetch(`${API}/prompt`);
+      const data = await r.json();
+      document.getElementById('prompt').value = data.prompt;
+    }
+
+    async function savePrompt() {
+      const prompt = document.getElementById('prompt').value;
+      await fetch(`${API}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+      alert('Prompt saved');
+    }
+
+    async function testPrompt() {
+      const res = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Hello' })
+      });
+      const data = await res.json();
+      document.getElementById('test-result').textContent = `Response: ${data.response}`;
+    }
+
+    async function loadMemories() {
+      const r = await fetch(`${API}/memories`);
+      const data = await r.json();
+      document.getElementById('mem-count').textContent = `(${data.count} total)`;
+
+      const tbody = document.querySelector('#memories tbody');
+      tbody.innerHTML = data.memories.map(m => `
+        <tr>
+          <td>${m.id}</td>
+          <td>${m.thread_id}</td>
+          <td>${m.text}</td>
+          <td>${new Date(m.created_at).toLocaleString()}</td>
+          <td><button class="del" onclick="delMemory(${m.id})">×</button></td>
+        </tr>
+      `).join('');
+    }
+
+    async function addMemory() {
+      const text = document.getElementById('mem-text').value.trim();
+      const thread_id = document.getElementById('mem-thread').value.trim();
+      if (!text) return;
+
+      await fetch(`${API}/memories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, thread_id })
+      });
+
+      document.getElementById('mem-text').value = '';
+      loadMemories();
+    }
+
+    async function delMemory(id) {
+      await fetch(`${API}/memories/${id}`, { method: 'DELETE' });
+      loadMemories();
+    }
+
+    loadPrompt();
+    loadMemories();
+    setInterval(loadMemories, 5000);
+  </script>
+</body>
+</html>

@@ -27,15 +27,80 @@ export default class FloUI {
         // Color shifting state
         this.hue = Math.random() * 360;
 
+        // Dragging state
+        this.isDragging = false;
+        this.dragOffset = { x: 0, y: 0 };
+        this.wasDragging = false; // To prevent click triggering after drag
+
         this.createAvatar();
 
-        // Global mouse tracking
+        // Drag events
+        this.container.addEventListener('mousedown', (e) => this.startDrag(e));
         window.addEventListener('mousemove', (e) => {
             window.mouseX = e.clientX;
             window.mouseY = e.clientY;
+            this.handleDrag(e);
         });
+        window.addEventListener('mouseup', () => this.endDrag());
 
         this.animate();
+    }
+
+    startDrag(e) {
+        if (e.button !== 0) return; // Only left click
+        this.isDragging = true;
+        this.isPaused = true; // Stop autonomous movement
+        this.wasDragging = false;
+
+        // Calculate offset from top-left of container
+        const rect = this.container.getBoundingClientRect();
+        this.dragOffset.x = e.clientX - rect.left;
+        this.dragOffset.y = e.clientY - rect.top;
+
+        // Visual feedback
+        this.container.style.cursor = 'grabbing';
+        this.avatar.style.transform = 'scale(1.15)';
+        this.mood = 'surprised';
+        this.updateMouth();
+    }
+
+    handleDrag(e) {
+        if (!this.isDragging) return;
+
+        // Flag that we are actually dragging (moved more than a pixel?)
+        this.wasDragging = true;
+
+        // Mark for RadialMenu to ignore the click at the end
+        this.container.dataset.wasDragging = 'true';
+
+        // Update position
+        this.position.x = e.clientX - this.dragOffset.x;
+        this.position.y = e.clientY - this.dragOffset.y;
+
+        // Apply immediately
+        this.container.style.left = `${this.position.x}px`;
+        this.container.style.top = `${this.position.y}px`;
+
+        // Update Radial Menu if active
+        if (window.radialMenu && window.radialMenu.updatePosition) {
+            window.radialMenu.updatePosition();
+        }
+    }
+
+    endDrag() {
+        if (!this.isDragging) return;
+        this.isDragging = false;
+        this.container.style.cursor = 'pointer';
+        this.avatar.style.transform = 'scale(1)';
+
+        // Resume behavior after a short delay
+        this.mood = 'content';
+        this.updateMouth();
+
+        // Reset velocity to 0 to prevent "flinging" accidentally, or maybe fling?
+        // Let's just pause for a second then resume wandering
+        this.pauseEndTime = Date.now() + 2000;
+        this.isPaused = true;
     }
 
     createAvatar() {
@@ -224,6 +289,8 @@ export default class FloUI {
     }
 
     updateFloatingMovement() {
+        if (this.isDragging) return;
+
         const now = Date.now();
         const dt = 16; // Approx delta for 60fps
 
@@ -281,7 +348,7 @@ export default class FloUI {
         // Screen Wrapping (Pop in from other side)
         const width = 80; // approximate width
         const height = 80;
-        const buffer = 100; // Distance off-screen before wrapping
+        const buffer = 10; // Distance off-screen before wrapping
 
         if (this.position.x > window.innerWidth + buffer) {
             this.position.x = -width - buffer;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mat, rand, addWorldElement, addGradientSky, setupWorldLighting } from './common';
+import { mat, rand, addWorldElement, addGradientSky, setupWorldLighting, createWeatherStation } from './common';
 
 export function buildMountainsWorld(scene: THREE.Scene) {
     addGradientSky(scene, 0x546e7a, 0x90a4ae);
@@ -25,4 +25,9 @@ export function buildMountainsWorld(scene: THREE.Scene) {
         mnt.rotation.y = rand(0, Math.PI * 2);
         addWorldElement(scene, mnt);
     }
+
+    // Add Weather Station
+    const weatherStation = createWeatherStation();
+    weatherStation.position.set(10, 0, 10);
+    addWorldElement(scene, weatherStation);
 }

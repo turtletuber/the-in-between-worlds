@@ -1,0 +1,8 @@
+annoy
+sentence-transformers
+torch
+numpy
+scipy
+scikit-learn
+flask
+tqdm

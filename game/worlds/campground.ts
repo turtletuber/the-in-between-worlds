@@ -393,7 +393,8 @@ export function buildCampgroundWorld(scene: THREE.Scene) {
 
     const moonGeo = new THREE.IcosahedronGeometry(8, 1);
     const moon = new THREE.Mesh(moonGeo, mat(0xffffff, 0xaaddff, 1.0));
-    moon.position.set(-100, 80, -100);
+    // Move moon closer to stay within fog/camera range
+    moon.position.set(-40, 50, -40);
     addWorldElement(scene, moon);
 
     const ground = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 1, 10), mat(0x121a12));

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Qwen Chat</title>
+  <style>
+    body { font-family: monospace; max-width: 800px; margin: 20px auto; padding: 20px; }
+    #messages { height: 400px; border: 1px solid #ccc; padding: 10px; overflow-y: auto; margin-bottom: 10px; }
+    .msg { margin: 10px 0; }
+    .user { color: #00f; }
+    .bot { color: #080; }
+    #input { width: calc(100% - 80px); padding: 8px; }
+    #send { padding: 8px 20px; }
+  </style>
+</head>
+<body>
+  <h2>Qwen 2.5:7b Chat</h2>
+  <div id="messages"></div>
+  <input id="input" placeholder="Type message...">
+  <button id="send">Send</button>
+
+  <script>
+    const msgs = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+
+    async function chat() {
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      msgs.innerHTML += `<div class="msg user">You: ${msg}</div>`;
+      input.value = '';
+      msgs.scrollTop = msgs.scrollHeight;
+
+      const res = await fetch('http://localhost:3001/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      msgs.innerHTML += `<div class="msg bot">Bot: ${data.response}</div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    send.onclick = chat;
+    input.onkeypress = (e) => e.key === 'Enter' && chat();
+  </script>
+</body>
+</html>
