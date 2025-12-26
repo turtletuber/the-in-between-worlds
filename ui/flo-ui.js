@@ -366,11 +366,6 @@ export default class FloUI {
             this.mood = moods[Math.floor(Math.random() * moods.length)];
             this.updateMouth();
 
-            // Occasionally emote physically
-            if (Math.random() < 0.3 && !this.tooltip) {
-                const emotes = ["(^◡^)", "(o.o)", "(>ω<)", "(ᵕᗨᵕ)", "(˘⌣˘)"];
-                this.say(emotes[Math.floor(Math.random() * emotes.length)], 2500);
-            }
         }
 
         // Cat-like floating behavior
