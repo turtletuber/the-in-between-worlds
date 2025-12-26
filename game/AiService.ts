@@ -74,7 +74,7 @@ export class AiService {
 
         } catch (e) {
             console.error('AI Service Error:', e);
-            const errorMsg = "Neural Link Unstable. Please ensure your local server is running and Ngrok tunnel is active.";
+            const errorMsg = "Neural Link Unstable. Please ensure your local server is running and Cloudflare / local tunnel is active.";
             onChunk(`[ ${errorMsg} ]`);
             return errorMsg;
         }
