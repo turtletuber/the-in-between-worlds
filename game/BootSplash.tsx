@@ -25,7 +25,7 @@ interface Particle {
     age: number;
 }
 
-export const BootSplash = ({ onComplete }: { onComplete: () => void }) => {
+export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => void }) => {
     const [frame, setFrame] = useState(0);
     const [output, setOutput] = useState<React.ReactNode[]>([]);
     const [phase, setPhase] = useState<'boot' | 'thinking' | 'matrix' | 'fluid' | 'idle' | 'celebrate' | 'complete' | 'done'>('boot');
@@ -313,7 +313,7 @@ export const BootSplash = ({ onComplete }: { onComplete: () => void }) => {
             {/* Skip Intro Button (Fixed to Viewport) */}
             {/* Skip Intro Button (Fixed to Viewport) */}
             <div
-                onClick={onComplete}
+                onClick={() => onComplete(true)}
                 className={`fixed bottom-12 right-12 font-mono text-xs text-cyan-500/40 hover:text-cyan-400 cursor-pointer transition-all duration-500 flex items-center gap-2 tracking-widest uppercase z-[200] ${showSkip ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <span>[ SKIP_INTRO ]</span>

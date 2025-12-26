@@ -28,8 +28,8 @@ export class TutorialManager {
         this.flo.isForced = true;
         // Center-third position for high visibility
         const targetPos = {
-            x: window.innerWidth / 2 - 40,
-            y: window.innerHeight / 3
+            x: window.innerWidth * 0.15, // Left third
+            y: window.innerHeight * 0.4
         };
         this.flo.forcedPosition = targetPos;
         this.flo.setMood('happy');

@@ -130,24 +130,24 @@ export const MobileControls: React.FC = () => {
                 </div>
 
                 {/* N64 Style Action Buttons */}
-                <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                    <div className="relative w-40 h-40">
+                <div className="flex flex-col items-center gap-4 pointer-events-auto pr-4">
+                    <div className="relative w-32 h-32">
                         {/* Button B (Top Left-ish) */}
                         <div
-                            className="absolute top-2 left-6 w-16 h-16 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            className="absolute top-2 left-2 w-14 h-14 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90 opacity-80"
                             style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
                         >
-                            <span className="text-white font-black italic text-2xl drop-shadow-md">B</span>
+                            <span className="text-white font-black italic text-xl drop-shadow-md">B</span>
                         </div>
 
                         {/* Button A (Bottom Right-ish) */}
                         <div
-                            className="absolute bottom-2 right-6 w-16 h-16 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            className="absolute bottom-2 right-2 w-14 h-14 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
                             onTouchStart={() => { keys.space = true; }}
                             onTouchEnd={() => { keys.space = false; }}
                             style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
                         >
-                            <span className="text-white font-black italic text-2xl drop-shadow-md">A</span>
+                            <span className="text-white font-black italic text-xl drop-shadow-md">A</span>
                         </div>
                     </div>
                 </div>

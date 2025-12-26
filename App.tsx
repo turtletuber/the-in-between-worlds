@@ -90,12 +90,14 @@ export default function App() {
     // Boot splash automatically shows because showSplash is true by default
   };
 
-  const handleSplashComplete = () => {
+  const handleSplashComplete = (skipped?: boolean) => {
     setShowSplash(false);
     // Reveal the world
     setTimeout(() => {
       setFadeOpacity(0);
-      window.dispatchEvent(new CustomEvent('tutorial-start'));
+      if (!skipped) {
+        window.dispatchEvent(new CustomEvent('tutorial-start'));
+      }
     }, 1000);
   };
 
