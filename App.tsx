@@ -27,6 +27,10 @@ export default function App() {
   // Toggle HUD with 'h'
   const [showHud, setShowHud] = useState(true);
 
+  // Responsive State: Mouse Parallax & Zoom Feedback
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [zoomLevel, setZoomLevel] = useState(1);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -56,8 +60,29 @@ export default function App() {
         setShowHud(prev => !prev);
       }
     };
+    const handleMouseMove = (e: MouseEvent) => {
+      // Normalize to -1 to 1 range
+      setMousePos({
+        x: (e.clientX / window.innerWidth) * 2 - 1,
+        y: (e.clientY / window.innerHeight) * 2 - 1
+      });
+    };
+
     window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('mousemove', handleMouseMove);
+
+    // Track Zoom Progress for HUD reactivity
+    const zoomInterval = setInterval(() => {
+      if ((window as any).targetZoomProgress !== undefined) {
+        setZoomLevel((window as any).targetZoomProgress);
+      }
+    }, 100);
+
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener('mousemove', handleMouseMove);
+      clearInterval(zoomInterval);
+    };
   }, []);
 
   const handleStart = () => {
@@ -98,16 +123,28 @@ export default function App() {
           <AdminPanel />
           <MobileControls />
 
-          {/* HUD Layer */}
-          <div className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}>
+          {/* HUD Layer with Mouse Parallax */}
+          <div
+            className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}
+            style={{
+              transform: `translate(${mousePos.x * 10}px, ${mousePos.y * 10}px)`,
+              transition: 'transform 0.2s ease-out, opacity 0.5s ease'
+            }}
+          >
             <HintsDropdown />
             <HotkeyHelp />
           </div>
 
           <AmbientAudio />
 
-          {/* Vignette Overlay */}
-          <div className="absolute inset-0 pointer-events-none z-10 bg-[radial-gradient(circle_at_center,transparent_0%,transparent_50%,rgba(5,5,15,0.6)_100%)]" />
+          {/* Vignette Overlay - Reactive to Zoom Level */}
+          <div
+            className="absolute inset-0 pointer-events-none z-10 transition-opacity duration-700"
+            style={{
+              background: `radial-gradient(circle at center, transparent 0%, transparent 40%, rgba(5,5,15,${0.4 + (zoomLevel * 0.08)}) 100%)`,
+              opacity: 0.8 + (Math.sin(Date.now() / 2000) * 0.05) // Subtle atmospheric pulse
+            }}
+          />
 
           {/* Fade Overlay */}
           <div
