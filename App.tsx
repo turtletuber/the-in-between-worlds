@@ -12,6 +12,7 @@ import { HotkeyHelp } from './components/HotkeyHelp';
 import { AmbientAudio } from './components/AmbientAudio';
 
 import { StartScreen } from './components/StartScreen';
+import { MobileControls } from './components/MobileControls';
 
 import { BootSplash } from './game/BootSplash';
 
@@ -95,6 +96,7 @@ export default function App() {
           <FloOverlay />
           <SidePanelOverlay />
           <AdminPanel />
+          <MobileControls />
 
           {/* HUD Layer */}
           <div className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}>

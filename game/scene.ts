@@ -131,6 +131,11 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
         zoomLevelsCount: zoomLevels.length
     });
 
+    (window as any).setZoomProgress = (val: number) => {
+        targetZoomProgress = val;
+        (window as any).targetZoomProgress = val;
+    };
+
     window.addEventListener('click', onClick);
 
     // Start the guided tutorial
