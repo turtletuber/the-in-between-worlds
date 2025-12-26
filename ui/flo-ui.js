@@ -1,5 +1,5 @@
 // js/ui/flo-ui.js
-import anime from 'animejs';
+import anime from 'animejs/lib/anime.es.js';
 
 export default class FloUI {
     constructor() {
