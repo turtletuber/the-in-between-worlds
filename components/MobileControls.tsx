@@ -4,9 +4,8 @@ import { keys } from '../game/Player';
 export const MobileControls: React.FC = () => {
     const [isMobile, setIsMobile] = useState(false);
     const joystickRef = useRef<HTMLDivElement>(null);
-    const [joystickActive, setJoystickActive] = useState(false);
     const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
-    const [zoomValue, setZoomValue] = useState(1.0);
+    const lastPinchDist = useRef<number | null>(null);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -16,23 +15,58 @@ export const MobileControls: React.FC = () => {
         checkMobile();
         window.addEventListener('resize', checkMobile);
 
-        // Sync local zoom value with global state if it changes externally
-        const syncInterval = setInterval(() => {
-            if ((window as any).targetZoomProgress !== undefined) {
-                setZoomValue((window as any).targetZoomProgress);
+        // Pinch to Zoom Logic
+        const handleTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                lastPinchDist.current = Math.sqrt(dx * dx + dy * dy);
             }
-        }, 500);
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 2 && lastPinchDist.current !== null) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                const delta = dist - lastPinchDist.current;
+                const sensitivity = 0.01;
+                let p = (window as any).targetZoomProgress || 0.0;
+
+                // Inverse relationship: pinch in (towards center) = zoom out. 
+                // In our engine, higher value = zoom out.
+                p -= delta * sensitivity;
+
+                // Clamp
+                p = Math.max(-3.0, Math.min(p, 7.0));
+
+                if ((window as any).setZoomProgress) {
+                    (window as any).setZoomProgress(p);
+                }
+                lastPinchDist.current = dist;
+            }
+        };
+
+        const handleTouchEnd = () => {
+            lastPinchDist.current = null;
+        };
+
+        window.addEventListener('touchstart', handleTouchStart);
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd);
 
         return () => {
             window.removeEventListener('resize', checkMobile);
-            clearInterval(syncInterval);
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
         };
     }, []);
 
     if (!isMobile) return null;
 
     const handleJoystickStart = (e: React.TouchEvent) => {
-        setJoystickActive(true);
         handleJoystickMove(e);
     };
 
@@ -56,8 +90,7 @@ export const MobileControls: React.FC = () => {
 
         setJoystickPos({ x: dx, y: dy });
 
-        // Update player keys
-        const threshold = maxDist * 0.3;
+        const threshold = maxDist * 0.2;
         keys.w = dy < -threshold;
         keys.s = dy > threshold;
         keys.a = dx < -threshold;
@@ -65,7 +98,6 @@ export const MobileControls: React.FC = () => {
     };
 
     const handleJoystickEnd = () => {
-        setJoystickActive(false);
         setJoystickPos({ x: 0, y: 0 });
         keys.w = false;
         keys.s = false;
@@ -73,80 +105,59 @@ export const MobileControls: React.FC = () => {
         keys.d = false;
     };
 
-    const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        setZoomValue(val);
-        if ((window as any).setZoomProgress) {
-            (window as any).setZoomProgress(val);
-        }
-    };
-
-    const handleFloatStart = () => { keys.space = true; };
-    const handleFloatEnd = () => { keys.space = false; };
-
     return (
-        <div className="fixed inset-0 pointer-events-none z-[200] flex flex-col justify-end p-8">
-
-            {/* Top Right: Zoom Slider */}
-            <div className="absolute top-1/2 right-4 -translate-y-1/2 flex flex-col items-center gap-4 pointer-events-auto">
-                <div className="text-[10px] uppercase tracking-widest text-cyan-400 font-bold opacity-60 [writing-mode:vertical-lr]">Zoom Axis</div>
-                <div className="h-48 w-8 relative flex items-center justify-center bg-black/40 backdrop-blur-xl border border-white/10 rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,255,255,0.1)]">
-                    <input
-                        type="range"
-                        min="0"
-                        max="5"
-                        step="0.01"
-                        value={zoomValue}
-                        onChange={handleZoomChange}
-                        className="absolute h-40 w-2 cursor-pointer accent-cyan-400 appearance-none bg-white/5 rounded-full"
-                        style={{ transform: 'rotate(-90deg)', width: '160px' }}
-                    />
-                </div>
-            </div>
+        <div className="fixed inset-0 pointer-events-none z-[200] flex flex-col justify-end p-12">
 
             <div className="flex justify-between items-end w-full">
-                {/* Left: Joystick */}
+                {/* Minimal Joystick */}
                 <div
                     ref={joystickRef}
-                    className="w-32 h-32 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center relative touch-none pointer-events-auto"
+                    className="w-32 h-32 flex items-center justify-center relative touch-none pointer-events-auto"
                     onTouchStart={handleJoystickStart}
                     onTouchMove={handleJoystickMove}
                     onTouchEnd={handleJoystickEnd}
                 >
-                    <div className="w-12 h-12 rounded-full bg-cyan-500/20 border border-white/20 absolute" />
+                    {/* Subtler Guideline */}
+                    <div className="w-24 h-24 rounded-full border border-white/5 opacity-20" />
+
+                    {/* The Knob */}
                     <div
-                        className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 shadow-[0_0_15px_rgba(34,211,238,0.5)] border border-white/30 transition-transform duration-75 flex items-center justify-center"
+                        className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-transform duration-75 flex items-center justify-center absolute"
                         style={{ transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)` }}
                     >
-                        <div className="w-1 h-1 rounded-full bg-white/50" />
+                        <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10" />
                     </div>
                 </div>
 
-                {/* Right: Float Button */}
-                <div
-                    className="w-20 h-20 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center pointer-events-auto active:scale-95 transition-transform"
-                    onTouchStart={handleFloatStart}
-                    onTouchEnd={handleFloatEnd}
-                >
-                    <div className="flex flex-col items-center gap-1">
-                        <div className="w-8 h-8 rounded-full border-2 border-cyan-400 flex items-center justify-center relative animate-pulse">
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full" />
+                {/* N64 Style Action Buttons */}
+                <div className="flex flex-col items-center gap-6 pointer-events-auto">
+                    <div className="relative w-40 h-40">
+                        {/* Button B (Top Left-ish) */}
+                        <div
+                            className="absolute top-2 left-6 w-16 h-16 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
+                        >
+                            <span className="text-white font-black italic text-2xl drop-shadow-md">B</span>
                         </div>
-                        <span className="text-[10px] font-bold tracking-tighter text-cyan-400">FLOAT</span>
+
+                        {/* Button A (Bottom Right-ish) */}
+                        <div
+                            className="absolute bottom-2 right-6 w-16 h-16 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            onTouchStart={() => { keys.space = true; }}
+                            onTouchEnd={() => { keys.space = false; }}
+                            style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
+                        >
+                            <span className="text-white font-black italic text-2xl drop-shadow-md">A</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-                input[type=range]::-webkit-slider-thumb {
-                    appearance: none;
-                    width: 16px;
-                    height: 16px;
-                    background: #22d3ee;
-                    border-radius: 50%;
-                    box-shadow: 0 0 10px rgba(34,211,238,0.8);
-                    border: 2px solid white;
+                @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@1,900&display=swap');
+                .drop-shadow-md {
+                    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
                 }
             `}} />
         </div>
