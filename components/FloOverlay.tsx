@@ -11,10 +11,7 @@ export const FloOverlay: React.FC = () => {
         (window as any).flo = flo;
 
         // Initialize radial menu attached to Flo
-        const radialMenu = new RadialMenu({
-            radius: 100,
-            numOptions: 6
-        });
+        const radialMenu = new RadialMenu();
         (window as any).radialMenu = radialMenu;
 
         // Define menu options

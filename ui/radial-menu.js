@@ -4,7 +4,7 @@ export default class RadialMenu {
   constructor(config = {}) {
     // Configuration
     this.SELECTOR_ANGLE = config.selectorAngle || 135; // Fixed selector position (northwest/top-left diagonal)
-    this.RADIUS = config.radius || 120; // Distance from center (pixels)
+    this.RADIUS = config.radius || 135; // Distance from center - expanded for touch
     this.NUM_OPTIONS = config.numOptions || 8; // Number of menu options
     this.ANGLE_STEP = 360 / this.NUM_OPTIONS; // Degrees between each option
     this.SCROLL_THRESHOLD = config.scrollThreshold || 15; // Pixels of scroll needed to trigger rotation
@@ -104,11 +104,13 @@ export default class RadialMenu {
         font-family: 'Courier New', monospace;
         font-weight: bold;
         color: #00ffff;
-        text-shadow: 0 0 5px #00ffff;
-        font-size: 14px;
+        text-shadow: 0 0 8px rgba(0, 255, 255, 0.8), 0 0 16px rgba(0, 255, 255, 0.4);
+        font-size: 16px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
         pointer-events: none;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.3s ease, transform 0.3s ease;
     `;
     this.optionsContainer.appendChild(this.selectionLabel);
 
@@ -159,23 +161,27 @@ export default class RadialMenu {
       position: absolute;
       left: 0;
       top: 0;
-      width: 56px;
-      height: 56px;
-      margin-left: -28px;
-      margin-top: -28px;
-      background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+      width: 64px;
+      height: 64px;
+      margin-left: -32px;
+      margin-top: -32px;
+      background: rgba(0, 20, 30, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 2px solid rgba(0, 255, 255, 0.3);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5em;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+      font-size: 1.8em;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.1);
       cursor: pointer;
       opacity: 0;
       transform: translate(0, 0);
-      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       pointer-events: none;
-      border: 2px solid rgba(255, 255, 255, 0.8);
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     `;
 
     // Click handler
@@ -416,11 +422,16 @@ export default class RadialMenu {
 
       const isSelected = Math.abs(angleDiff) < this.ANGLE_STEP / 2;
 
-      // Slight scale on highlighted item (at selector position), normal for others
-      const scale = isSelected ? 1.1 : 1.0;
+      // Slight scale and glow on highlighted item
+      const scale = isSelected ? 1.25 : 1.0;
+      const glow = isSelected ? '0 0 25px rgba(0, 255, 255, 0.6), inset 0 0 15px rgba(0, 255, 255, 0.3)' : '0 0 15px rgba(0, 255, 255, 0.1)';
+      const borderColor = isSelected ? 'rgba(0, 255, 255, 0.8)' : 'rgba(0, 255, 255, 0.3)';
+
       option.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-      option.style.opacity = '1'; // All fully visible while rotating
-      option.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      option.style.boxShadow = glow;
+      option.style.borderColor = borderColor;
+      option.style.opacity = '1';
+      option.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
 
       // Debug mode: Add angle info to tooltip
       if (this.DEBUG_MODE) {
