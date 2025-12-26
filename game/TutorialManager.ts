@@ -3,6 +3,7 @@ import { keys } from './Player';
 export class TutorialManager {
     private step = 0;
     private flo: any = null;
+    private isMobile = false;
     private hasMoved = false;
     private hasZoomed = false;
 
@@ -11,6 +12,8 @@ export class TutorialManager {
     }
 
     private async init() {
+        this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
         // Wait for Flo to be ready
         while (!(window as any).flo) {
             await new Promise(r => setTimeout(r, 500));
@@ -43,7 +46,8 @@ export class TutorialManager {
             if (dist < 5) {
                 // Direct Minimal Instruction
                 this.step = 1;
-                this.flo.say("MOVE WITH WASD", 0);
+                const msg = this.isMobile ? "USE JOYSTICK" : "MOVE WITH WASD";
+                this.flo.say(msg, 0);
                 this.listenForMovement();
             } else {
                 requestAnimationFrame(arrivalCheck);
@@ -61,7 +65,8 @@ export class TutorialManager {
                 this.flo.say("EXCELLENT", 3000);
 
                 setTimeout(() => {
-                    this.flo.say("SPACE TO FLOAT", 0);
+                    const msg = this.isMobile ? "PRESS A TO FLOAT" : "SPACE TO FLOAT";
+                    this.flo.say(msg, 0);
                     this.listenForFloat();
                 }, 3500);
             } else {
@@ -80,7 +85,8 @@ export class TutorialManager {
                 this.flo.say("MAGICAL", 3000);
 
                 setTimeout(() => {
-                    this.flo.say("SCROLL OUT TO BREAKTHROUGH", 0);
+                    const msg = this.isMobile ? "PINCH OUT TO BREAKTHROUGH" : "SCROLL OUT TO BREAKTHROUGH";
+                    this.flo.say(msg, 0);
                     this.listenForZoom();
                 }, 3500);
             } else {
@@ -101,7 +107,8 @@ export class TutorialManager {
                 this.flo.say("HUB REACHED", 3000);
 
                 setTimeout(() => {
-                    this.flo.say("SCROLL IN A LIL", 0);
+                    const msg = this.isMobile ? "PINCH IN A LIL" : "SCROLL IN A LIL";
+                    this.flo.say(msg, 0);
                     this.listenForScrollIn();
                 }, 3500);
             } else {

@@ -10,10 +10,18 @@ const HOTKEYS = [
 ];
 
 export const HotkeyHelp: React.FC = () => {
+    const [isMobile, setIsMobile] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [metrics, setMetrics] = useState({ cpu: 0, ram: 0, net: { down: 0, up: 0 } });
 
     useEffect(() => {
+        const checkMobile = () => {
+            const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            setIsMobile(hasTouch);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+
         const interval = setInterval(() => {
             setMetrics({
                 cpu: parseFloat((2 + Math.random() * 33).toFixed(1)),
@@ -24,7 +32,10 @@ export const HotkeyHelp: React.FC = () => {
                 }
             });
         }, 2000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('resize', checkMobile);
+        };
     }, []);
 
     const Bar = ({ percent, color = 'bg-cyan-500' }: { percent: number, color?: string }) => (
@@ -90,10 +101,17 @@ export const HotkeyHelp: React.FC = () => {
                         {/* CONTROLS */}
                         <div>
                             <div className="text-[10px] text-cyan-600 mb-2 border-b border-cyan-900 pb-1 uppercase tracking-tighter">
-                                :: Access Keys ::
+                                :: {isMobile ? 'Touch Inputs' : 'Access Keys'} ::
                             </div>
                             <div className="flex flex-col gap-2">
-                                {HOTKEYS.map((item, i) => (
+                                {(isMobile ? [
+                                    { key: 'Joy', desc: 'Movement' },
+                                    { key: 'Tap', desc: 'Interact / Walk' },
+                                    { key: 'A', desc: 'OK / Float' },
+                                    { key: 'B', desc: 'Back / Exit' },
+                                    { key: 'Swipe', desc: 'Rotate Flo Menu' },
+                                    { key: 'Pinch', desc: 'Zoom / Breakthrough' },
+                                ] : HOTKEYS).map((item, i) => (
                                     <div key={i} className="flex justify-between items-center text-gray-300">
                                         <span className="bg-white/5 px-1.5 py-0.5 rounded text-[9px] text-yellow-500/90 font-bold border border-white/5">
                                             {item.key}

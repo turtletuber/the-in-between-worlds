@@ -11,6 +11,7 @@ export default class FloUI {
         this.rightPupil = null;
         this.mouth = null;
         this.shapePath = null;
+        this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         this.time = 0;
         this.isBlinking = false;
@@ -623,7 +624,7 @@ export default class FloUI {
             animation: floTooltipIn 0.3s ease-out forwards;
         `;
 
-        this.tooltip.textContent = `[ ${text} ]`;
+        this.tooltip.textContent = `[ ${this.translateForMobile(text)} ]`;
 
         // Initial position sync (prevent bottom-left flash)
         const bob = Math.sin(this.time * 0.003) * 3;
@@ -645,6 +646,17 @@ export default class FloUI {
                 }
             }, duration);
         }
+    }
+
+    translateForMobile(text) {
+        if (!this.isMobile) return text;
+
+        return text
+            .replace(/CLICK/g, 'TAP')
+            .replace(/SCROLL/g, 'PINCH')
+            .replace(/WASD/g, 'JOYSTICK')
+            .replace(/SPACE/g, 'BUTTON A')
+            .replace(/RIGHT CLICK/g, 'LONG PRESS');
     }
 
     setMood(mood) {
