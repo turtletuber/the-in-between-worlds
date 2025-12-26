@@ -197,9 +197,11 @@ export default class FloUI {
 
         // Path Definitions (all 8 points for smooth morphing)
         this.paths = {
-            // Circle-ish (8 points)
+            // Organic Circle (Floating/Happy)
             orb: "M50,10 C62,10 75,15 82,25 C90,35 90,50 90,62 C90,75 80,90 62,90 C50,90 35,90 25,82 C15,75 10,65 10,50 C10,35 15,22 25,12 C35,5 45,10 50,10 Z",
-            // Star-ish (8 points)
+            // Perfect Geometric Circle (Content)
+            perfect: "M50,10 C61,10 71.2,14.4 78.3,21.7 C85.6,28.8 90,39 90,50 C90,61 85.6,71.2 78.3,78.3 C71.2,85.6 61,90 50,90 C39,90 28.8,85.6 21.7,78.3 C14.4,71.2 10,61 10,50 C10,39 14.4,28.8 21.7,21.7 C28.8,14.4 39,10 50,10 Z",
+            // Star-ish (Excited/Playful)
             star: "M50,5 L65,35 L95,45 L70,65 L80,95 L50,80 L20,95 L30,65 L5,45 L35,35 Z",
             // Sleepy/Puddle
             sleepy: "M50,40 C70,40 90,45 95,65 C100,85 80,95 50,95 C20,95 0,85 5,65 C10,45 30,40 50,40 Z",
@@ -659,6 +661,7 @@ export default class FloUI {
 
         // Morph Shape if we have a path definition for the new mood
         let targetPath = this.paths.orb;
+        if (mood === 'content') targetPath = this.paths.perfect;
         if (mood === 'playful') targetPath = this.paths.star;
         if (mood === 'sleepy') targetPath = this.paths.sleepy;
         if (mood === 'surprised') targetPath = this.paths.surprised;

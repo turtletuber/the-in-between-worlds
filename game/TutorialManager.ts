@@ -151,6 +151,7 @@ export class TutorialManager {
 
                 // Release Flo after tutorial
                 setTimeout(() => {
+                    this.flo.setMood('happy');
                     this.flo.isForced = false;
                     // whisper-trigger already happens in switchWorld
                 }, 5500);
