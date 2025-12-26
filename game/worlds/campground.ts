@@ -382,9 +382,9 @@ export const createWeatherStation = () => {
 
 export function buildCampgroundWorld(scene: THREE.Scene) {
     addGradientSky(scene, 0x0a1033, 0x020205);
-    setupWorldLighting(scene, 0x4466ff, 0x050515, 0.6);
+    setupWorldLighting(scene, 0x5577ff, 0x050515, 1.0); // Brightened Ambient
 
-    const moonLight = new THREE.DirectionalLight(0x88ccff, 1.5);
+    const moonLight = new THREE.DirectionalLight(0xaaddff, 1.8); // Lighter, silvery moon
     moonLight.position.set(-30, 40, -20);
     moonLight.castShadow = true;
     moonLight.shadow.mapSize.width = 1024;

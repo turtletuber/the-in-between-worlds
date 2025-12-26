@@ -11,6 +11,8 @@ export const SidePanelOverlay: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
+    const [tokens, setTokens] = useState(0);
+    const [latency, setLatency] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -26,7 +28,19 @@ export const SidePanelOverlay: React.FC = () => {
         };
 
         window.addEventListener('side-panel-state', handleStateChange as EventListener);
-        return () => window.removeEventListener('side-panel-state', handleStateChange as EventListener);
+
+        // AI Metrics listeners
+        const handleLatency = (e: CustomEvent) => setLatency(e.detail.latency);
+        const handleTokens = (e: CustomEvent) => setTokens(prev => prev + e.detail.tokens);
+
+        window.addEventListener('ai-latency', handleLatency as EventListener);
+        window.addEventListener('ai-tokens', handleTokens as EventListener);
+
+        return () => {
+            window.removeEventListener('side-panel-state', handleStateChange as EventListener);
+            window.removeEventListener('ai-latency', handleLatency as EventListener);
+            window.removeEventListener('ai-tokens', handleTokens as EventListener);
+        };
     }, []);
 
     // Auto-focus when visible
@@ -184,6 +198,23 @@ export const SidePanelOverlay: React.FC = () => {
                     >
                         Send
                     </button>
+                </div>
+            </div>
+
+            {/* Metrics Footer */}
+            <div className="relative z-10 px-6 py-2 border-t border-cyan-500/10 flex justify-between items-center bg-black/40 rounded-bl-xl">
+                <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-cyan-700 uppercase">Tokens</span>
+                        <span className="text-cyan-400 font-bold text-xs">{tokens.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-cyan-700 uppercase">Latency</span>
+                        <span className="text-cyan-400 font-bold text-xs">{latency}ms</span>
+                    </div>
+                </div>
+                <div className="text-[9px] text-cyan-900 tracking-widest uppercase">
+                    Neural Link Active
                 </div>
             </div>
 

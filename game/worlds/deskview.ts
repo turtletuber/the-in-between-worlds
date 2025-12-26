@@ -161,8 +161,6 @@ export function buildDeskviewWorld(scene: THREE.Scene) {
     }
     monitorGroup.add(miniWorld);
 
-    monitorGroup.userData.isClickable = true;
-    monitorGroup.userData.targetWorld = 'CosmicHub';
     addWorldElement(scene, monitorGroup);
 
     // Peripherals

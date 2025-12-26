@@ -67,7 +67,10 @@ export default function App() {
   const handleSplashComplete = () => {
     setShowSplash(false);
     // Reveal the world
-    setTimeout(() => setFadeOpacity(0), 1000);
+    setTimeout(() => {
+      setFadeOpacity(0);
+      window.dispatchEvent(new CustomEvent('tutorial-start'));
+    }, 1000);
   };
 
   return (

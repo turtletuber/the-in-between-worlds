@@ -168,24 +168,23 @@ export class SidePanelProjector {
     // 3. Core Light
     this.coreLight.intensity = eased * 1.5;
 
-    // 4. Particles
-    const partsMat = this.particleSystem.material as THREE.PointsMaterial;
-    partsMat.opacity = eased * 0.5;
+    // 4. Particles - ONLY update if visible or moving to save CPU
+    if (eased > 0) {
+      const partsMat = this.particleSystem.material as THREE.PointsMaterial;
+      partsMat.opacity = eased * 0.5;
 
-    const positions = this.particleSystem.geometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < 80; i++) {
-      // Reset if too high or hidden
-      if (positions[i * 3 + 1] > 4 || this.deployProgress <= 0.1) {
-        positions[i * 3 + 1] = 0;
-        partsMat.opacity = 0; // Hide abruptly on reset
-      } else {
-        partsMat.opacity = eased * 0.5;
+      const positions = this.particleSystem.geometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < 80; i++) {
+        // Reset if too high or hidden
+        if (positions[i * 3 + 1] > 4 || this.deployProgress <= 0.1) {
+          positions[i * 3 + 1] = 0;
+        }
+
+        // Float up
+        positions[i * 3 + 1] += deltaTime * (0.8 + Math.random() * 0.8);
       }
-
-      // Float up
-      positions[i * 3 + 1] += deltaTime * (0.8 + Math.random() * 0.8);
+      this.particleSystem.geometry.attributes.position.needsUpdate = true;
     }
-    this.particleSystem.geometry.attributes.position.needsUpdate = true;
   }
 
   private easeInOutQuad(t: number): number {

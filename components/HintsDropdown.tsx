@@ -16,15 +16,42 @@ export const HintsDropdown: React.FC = () => {
     const [fade, setFade] = useState(true);
 
     useEffect(() => {
-        const interval = setInterval(() => {
+        let timeout: NodeJS.Timeout;
+
+        const triggerWhisper = () => {
             setFade(false); // Fade out
             setTimeout(() => {
                 const next = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
                 setCurrent(next);
                 setFade(true); // Fade in
+
+                // Stay visible for 8 seconds, then fade out
+                timeout = setTimeout(() => {
+                    setFade(false);
+                }, 8000);
             }, 1000);
-        }, 8000);
-        return () => clearInterval(interval);
+        };
+
+        // Initial trigger
+        setTimeout(triggerWhisper, 3000);
+
+        const interval = setInterval(() => {
+            triggerWhisper();
+        }, 70000); // New one every 70s (approx 60s silence)
+
+        // Listen for manual triggers from significant actions
+        const handleManual = () => {
+            clearTimeout(timeout);
+            triggerWhisper();
+        };
+
+        window.addEventListener('whisper-trigger', handleManual);
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timeout);
+            window.removeEventListener('whisper-trigger', handleManual);
+        };
     }, []);
 
     return (

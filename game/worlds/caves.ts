@@ -148,7 +148,7 @@ const createStalagmite = (height = 2) => {
 
 export function buildCrystalCavesWorld(scene: THREE.Scene) {
     addGradientSky(scene, 0x000000, 0x1a1a2e); // Dark cave void
-    setupWorldLighting(scene, 0x311b92, 0x050010, 0.3);
+    setupWorldLighting(scene, 0x311b92, 0x050010, 0.8); // Brightened from 0.3
 
     const ground = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 1, 12), mat(0x120021));
     ground.position.y = -0.5;

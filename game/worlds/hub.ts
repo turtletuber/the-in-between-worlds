@@ -2,20 +2,26 @@ import * as THREE from 'three';
 import { mat, addWorldElement, setupWorldLighting } from './common';
 
 export const hubIslands = [
-    { id: 'campground', pos: [-16, 0, 0], color: 0x4caf50 },
-    { id: 'mountains', pos: [16, 3, 8], color: 0x90caf9 },
-    { id: 'forest', pos: [0, -3, -16], color: 0x2e7d32 },
-    { id: 'caves', pos: [-12, 5, -12], color: 0x673ab7 },
-    { id: 'sky', pos: [12, -4, 12], color: 0x81d4fa },
-    { id: 'crops', pos: [0, -6, 16], color: 0xff7043 },
-    { id: 'waterfalls', pos: [-12, -4, 12], color: 0x0277bd } // Waterfalls island
+    { id: 'campground', pos: [-16, 0, 0], color: 0x4caf50, groundColor: 0x121a12 },
+    { id: 'mountains', pos: [16, 3, 8], color: 0x90caf9, groundColor: 0x78909c },
+    { id: 'forest', pos: [0, -3, -16], color: 0x2e7d32, groundColor: 0x1a2e1a },
+    { id: 'caves', pos: [-12, 5, -12], color: 0x673ab7, groundColor: 0x120021 },
+    { id: 'sky', pos: [12, -4, 12], color: 0x81d4fa, groundColor: 0x9ca3af },
+    { id: 'crops', pos: [0, -6, 16], color: 0xff7043, groundColor: 0x5d4037 },
+    { id: 'waterfalls', pos: [-12, -4, 12], color: 0x0277bd, groundColor: 0x66bb6a } // Waterfalls island
 ];
 
 export function buildCosmicHubWorld(scene: THREE.Scene) {
-    setupWorldLighting(scene, 0x402060, 0x050510, 0.7);
+    // Balanced Darkness: Deep Purple ambient, but relying on Direct Light for visibility
+    setupWorldLighting(scene, 0x7030a0, 0x200530, 1.5);
+
+    // Strong key light remains for island definition
+    const sun = new THREE.DirectionalLight(0xffddff, 2.0);
+    sun.position.set(20, 50, 20);
+    addWorldElement(scene, sun);
 
     const geodesicCore = new THREE.Group();
-    const baseGeo = new THREE.IcosahedronGeometry(3.5, 2).toNonIndexed();
+    const baseGeo = new THREE.IcosahedronGeometry(3.5, 2);
     const posAttr = baseGeo.attributes.position;
 
     for (let i = 0; i < posAttr.count; i += 3) {
@@ -55,8 +61,8 @@ export function buildCosmicHubWorld(scene: THREE.Scene) {
         const group = new THREE.Group();
         group.position.set(data.pos[0], data.pos[1], data.pos[2]);
 
-        // Base Platform
-        const base = new THREE.Mesh(new THREE.ConeGeometry(3, 4, 5), mat(0x222222));
+        // Base Platform matching World Ground Color
+        const base = new THREE.Mesh(new THREE.ConeGeometry(3, 4, 5), mat(data.groundColor));
         base.rotation.x = Math.PI;
         group.add(base);
 
@@ -135,6 +141,7 @@ export function buildCosmicHubWorld(scene: THREE.Scene) {
                 markerGroup.add(rock);
                 markerGroup.add(stream);
                 break;
+
 
             default:
                 // Fallback

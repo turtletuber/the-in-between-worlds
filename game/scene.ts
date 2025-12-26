@@ -11,9 +11,25 @@ import {
     buildMemoryCropsWorld,
     buildWaterfallWorld
 } from './worlds';
-import { createAvatars, updateAvatarBehaviors, disposeAvatars } from './avatars';
+import { createAvatars, updateAvatarBehaviors, disposeAvatars, activeSprites } from './avatars';
 import { CosmicHub } from './cosmic';
 import { SidePanelProjector } from './SidePanelProjector';
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+import {
+    createPlayer,
+    updatePlayerMovement,
+    playerState
+} from './Player';
+import { setupInputHandlers } from './InputManager';
+import { TutorialManager } from './TutorialManager';
+
+// Extension for fast collision
+// @ts-ignore
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+// @ts-ignore
+THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+// @ts-ignore
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -21,20 +37,15 @@ let renderer: THREE.WebGLRenderer;
 let controls: OrbitControls;
 let clock: THREE.Clock;
 let cosmicHub: CosmicHub;
-let player: THREE.Group;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2;
 let onWorldChangeCallback: (name: string, msg: string) => void;
 let hudArm: SidePanelProjector;
+let animatedObjects: THREE.Object3D[] = [];
+let worldElements: THREE.Object3D[] = [];
 
 // State
 let currentWorld = 'campground';
-const keys = { w: false, a: false, s: false, d: false };
-const playerState = {
-    position: new THREE.Vector3(0, 1.5, 0),
-    moveSpeed: 5.0,
-    facingDirection: new THREE.Vector3(0, 0, -1)
-};
 
 // Zoom system
 const zoomLevels = [
@@ -83,49 +94,54 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
     hudArm = new SidePanelProjector(scene);
     hudArm.handleResize(window.innerWidth, window.innerHeight);
 
-    createPlayer();
+    // Initialize Player
+    const player = createPlayer(scene);
 
-    // Initial world setup
-    switchWorld(currentWorld, false);
-
-    window.addEventListener('resize', onWindowResize);
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    window.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('click', onClick);
-
-    // Listen for UI events from Flo/Radial Menu
-    window.addEventListener('open-side-panel', ((e: CustomEvent) => {
-        if (hudArm) {
-            // Open the arm if closed
-            if (!hudArm.isDeployed) {
-                hudArm.deploy();
-            }
-            // Update the content based on the panel selected
-            hudArm.setPanelContent(e.detail.panel);
-        }
-    }) as EventListener);
-
-    window.addEventListener('close-side-panel', (() => {
-        if (hudArm && hudArm.isDeployed) {
-            hudArm.retract();
-        }
-    }) as EventListener);
-
+    // Initialize Avatars before first world switch
     try {
         createAvatars(scene);
     } catch (e) {
         console.error("Failed to create avatars:", e);
     }
+
+    // Initial world setup
+    (window as any).currentWorld = currentWorld;
+    switchWorld(currentWorld, false);
+
+    // Initial behavior update to set visibility
+    updateAvatarBehaviors(scene, 0, 0.016, player.position, currentWorld);
+
+    (window as any).currentWorld = currentWorld;
+    (window as any).targetZoomProgress = targetZoomProgress;
+
+    // Initialize Input Handlers
+    const cleanupInput = setupInputHandlers({
+        camera,
+        hudArm,
+        renderer,
+        scene,
+        currentWorld,
+        switchWorld,
+        onWorldChangeCallback,
+        getZoomProgress: () => targetZoomProgress,
+        setZoomProgress: (val) => {
+            targetZoomProgress = val;
+            (window as any).targetZoomProgress = val;
+        },
+        zoomLevelsCount: zoomLevels.length
+    });
+
+    window.addEventListener('click', onClick);
+
+    // Start the guided tutorial
+    new TutorialManager();
+
     animate();
 
     return () => {
         if (animationId) cancelAnimationFrame(animationId);
-        window.removeEventListener('resize', onWindowResize);
-        window.removeEventListener('keydown', onKeyDown);
-        window.removeEventListener('keyup', onKeyUp);
-        window.removeEventListener('wheel', onWheel);
         window.removeEventListener('click', onClick);
+        cleanupInput();
     };
 }
 
@@ -147,17 +163,17 @@ function animate() {
     const delta = clock.getDelta();
     const time = clock.getElapsedTime();
 
-    updatePlayerMovement(delta);
+    updatePlayerMovement(scene, camera, controls, currentZoom, delta, time, worldElements);
     updateZoom(delta);
 
     if (cosmicHub) cosmicHub.update(delta);
     if (hudArm) hudArm.update(delta);
 
-    updateAvatarBehaviors(time, delta, player.position, currentWorld);
+    updateAvatarBehaviors(scene, time, delta, playerState.position, currentWorld);
 
-    scene.traverse((obj) => {
-        // Individual Shard Geodesic Animation
-        if (obj.userData.center && (obj instanceof THREE.Mesh)) {
+    animatedObjects.forEach((obj) => {
+        // Individual Shard Geodesic Animation - ONLY animate if it's actually in the core
+        if (obj.userData.center && (obj instanceof THREE.Mesh) && obj.parent?.userData.isWorldElement) {
             const shift = (Math.sin(time * obj.userData.bobSpeed) * 0.5 + 0.5) * obj.userData.bobHeight;
             const dir = obj.userData.center.clone().normalize();
             obj.position.copy(dir.multiplyScalar(shift));
@@ -180,7 +196,6 @@ function animate() {
         // Generic Rotation
         if (obj.userData.rotateSpeed) {
             obj.rotation.y += obj.userData.rotateSpeed * delta;
-            // Optional: some objects might rotate on X too, but let's stick to Y mostly or check config
             if (obj.userData.rotateX) obj.rotation.x += obj.userData.rotateSpeed * delta;
         }
 
@@ -198,52 +213,12 @@ function animate() {
     controls.update();
     renderer.render(scene, camera);
 
-    // Render HUD on top
+    // Render HUD on top - HUD update is already handled in the main loop area
     if (hudArm) {
-        hudArm.update(delta);
         hudArm.render(renderer);
     }
 }
 
-function updatePlayerMovement(delta: number) {
-    if (!player) return;
-
-    const moveDirection = new THREE.Vector3();
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-    cameraDirection.y = 0;
-    cameraDirection.normalize();
-
-    const cameraRight = new THREE.Vector3();
-    cameraRight.crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
-
-    if (keys.w) moveDirection.add(cameraDirection);
-    if (keys.s) moveDirection.sub(cameraDirection);
-    if (keys.d) moveDirection.add(cameraRight);
-    if (keys.a) moveDirection.sub(cameraRight);
-
-    moveDirection.normalize();
-
-    if (moveDirection.length() > 0) {
-        const moveDistance = playerState.moveSpeed * delta;
-        player.position.add(moveDirection.multiplyScalar(moveDistance));
-        playerState.facingDirection.copy(moveDirection);
-    }
-
-    player.position.y = 1.5 + Math.sin(clock.getElapsedTime() * 3) * 0.08;
-
-    if (controls) {
-        controls.target.lerp(player.position, delta * 5);
-        const targetDist = currentZoom.distance;
-        const targetHeight = currentZoom.height;
-        const offset = camera.position.clone().sub(controls.target);
-        offset.y = 0;
-        offset.normalize().multiplyScalar(targetDist);
-        offset.y = targetHeight;
-        const targetCamPos = controls.target.clone().add(offset);
-        camera.position.lerp(targetCamPos, delta * 2);
-    }
-}
 
 function updateZoom(delta: number) {
     const speed = 5.0;
@@ -291,105 +266,7 @@ function updateZoom(delta: number) {
     camera.updateProjectionMatrix();
 }
 
-function createPlayer() {
-    const group = new THREE.Group();
-    const geometry = new THREE.OctahedronGeometry(0.5, 0);
-    const material = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0x88ccff,
-        emissiveIntensity: 0.8,
-        flatShading: true,
-        roughness: 0.2,
-        metalness: 0.8
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-    group.add(mesh);
-    const light = new THREE.PointLight(0x88ccff, 3, 12);
-    group.add(light);
-    group.position.copy(playerState.position);
-    player = group;
-    scene.add(player);
-}
 
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    if (hudArm) hudArm.handleResize(window.innerWidth, window.innerHeight);
-}
-
-function onKeyDown(e: KeyboardEvent) {
-    // 1. Check if we are typing in the HUD Chat (Handled by React Overlay now)
-    // We only capture Escape here safely
-    if (hudArm && hudArm.isDeployed) {
-        if (e.key === 'Escape') {
-            hudArm.retract();
-            return;
-        }
-        // If the overlay is open, we might want to prevent other game hotkeys?
-        // But the React Input stops propagation.
-        // Let's rely on that.
-    }
-
-    // 2. Normal Game Inputs (only if not chatting)
-    const key = e.key.toLowerCase();
-    if (key === 'w') keys.w = true;
-    if (key === 'a') keys.a = true;
-    if (key === 's') keys.s = true;
-    if (key === 'd') keys.d = true;
-    // 'M' or 'H' toggles the Mechanical Arm
-    if (key === 'm' || key === 'h') {
-        if (hudArm) hudArm.toggle();
-    }
-    // 'L' toggles Low Power Mode (Performance)
-    if (key === 'l') {
-        const isLow = renderer.shadowMap.enabled === true; // If currently true, we are going to false (Low Power)
-
-        console.log(`Toggling Performance Mode: ${isLow ? 'Low Power' : 'High Quality'}`);
-
-        renderer.shadowMap.enabled = !isLow;
-        renderer.setPixelRatio(isLow ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
-
-        // Re-compile materials (needed when toggling shadows)
-        scene.traverse((obj) => {
-            if (obj instanceof THREE.Mesh && obj.material) {
-                obj.material.needsUpdate = true;
-            }
-        });
-
-        if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, isLow ? "Low Power Mode Enabled" : "High Quality Restored");
-    }
-
-    const worlds: { [key: string]: string } = {
-        '0': 'deskview', '1': 'CosmicHub', '2': 'campground',
-        '3': 'mountains', '4': 'forest', '5': 'caves', '6': 'sky',
-        '7': 'crops', '8': 'waterfalls'
-    };
-    if (worlds[key]) switchWorld(worlds[key]);
-}
-
-function onKeyUp(e: KeyboardEvent) {
-    const key = e.key.toLowerCase();
-    if (key === 'w') keys.w = false;
-    if (key === 'a') keys.a = false;
-    if (key === 's') keys.s = false;
-    if (key === 'd') keys.d = false;
-}
-
-function onWheel(e: WheelEvent) {
-    e.preventDefault();
-    const sensitivity = 0.0015;
-    targetZoomProgress += e.deltaY * sensitivity;
-
-    // Limits: Hub can go way out, Desk can go way in
-    if (currentWorld === 'CosmicHub') {
-        targetZoomProgress = Math.max(0, Math.min(targetZoomProgress, 7.0));
-    } else if (currentWorld === 'deskview') {
-        targetZoomProgress = Math.max(-3.0, Math.min(targetZoomProgress, zoomLevels.length - 1));
-    } else {
-        targetZoomProgress = Math.max(0, Math.min(targetZoomProgress, 5.0));
-    }
-}
 
 function onClick(event: MouseEvent) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -421,38 +298,42 @@ function onClick(event: MouseEvent) {
                 const light = scene.children.find(c => c instanceof THREE.HemisphereLight) as THREE.HemisphereLight;
                 const fireflies = scene.children.find(c => c.userData.isFireflies);
 
-                if (currentWorld === 'campground') {
-                    // Check if currently "Night" (Dark Blue/Black)
-                    const isNight = scene.fog?.color.getHex() === 0x050515;
+                // Initialize state if undefined (Default is Night/Dark for most)
+                if (scene.userData.isDaytime === undefined) {
+                    // Assume we start at Night for Campground/Forest/Caves, Day for others
+                    scene.userData.isDaytime = false;
+                }
 
-                    if (isNight) {
-                        // Switch to Golden Evening (Bright/Warm)
-                        scene.background = new THREE.Color(0xffaa55); // Sunset Orange
+                // Toggle State
+                scene.userData.isDaytime = !scene.userData.isDaytime;
+                const isDay = scene.userData.isDaytime;
+
+                if (currentWorld === 'campground') {
+                    if (isDay) {
+                        // Switch to Golden Evening
+                        scene.background = new THREE.Color(0xffaa55);
                         scene.fog = new THREE.FogExp2(0xffaa55, 0.012);
                         if (light) {
-                            light.color.setHex(0xffddaa); // Warm Sun
+                            light.color.setHex(0xffddaa);
                             light.groundColor.setHex(0x664422);
                             light.intensity = 1.2;
                         }
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "A golden sunset warms the camp...");
                     } else {
-                        // Switch back to Dark Night (Darker)
-                        scene.background = new THREE.Color(0x020205); // Deep Void
-                        scene.fog = new THREE.FogExp2(0x050515, 0.025); // Dense Fog
+                        // Switch to Night (Lighter Moon Standard)
+                        scene.background = new THREE.Color(0x020205);
+                        scene.fog = new THREE.FogExp2(0x050515, 0.025);
                         if (light) {
-                            light.color.setHex(0x223388); // Moonlight
+                            light.color.setHex(0x3344aa);
                             light.groundColor.setHex(0x020211);
-                            light.intensity = 0.4;
+                            light.intensity = 1.0;
                         }
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Darkness falls...");
                     }
                 } else if (currentWorld === 'forest') {
-                    // Check if currently "Night" (Deep Green/Black)
-                    const isNight = scene.fog?.color.getHex() === 0x022c22;
-
-                    if (isNight) {
-                        // Switch to Golden Afternoon (Bright)
-                        scene.background = new THREE.Color(0xfde68a); // Pale Gold
+                    if (isDay) {
+                        // Switch to Golden Afternoon
+                        scene.background = new THREE.Color(0xfde68a);
                         scene.fog = new THREE.FogExp2(0xfde68a, 0.015);
                         if (light) {
                             light.color.setHex(0xfff7ed);
@@ -462,25 +343,22 @@ function onClick(event: MouseEvent) {
                         if (fireflies) fireflies.visible = false;
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Sunlight filters through the leaves...");
                     } else {
-                        // Switch to Deep Forest Night (Darker)
-                        scene.background = new THREE.Color(0x020402); // Almost Black
-                        scene.fog = new THREE.FogExp2(0x022c22, 0.04); // Heavy Fog
+                        // Switch to Deep Forest Night (New Brightened Standard)
+                        scene.background = new THREE.Color(0x020402);
+                        scene.fog = new THREE.FogExp2(0x022c22, 0.04);
                         if (light) {
-                            light.color.setHex(0x1e3a8a); // Blue Moonlight
+                            light.color.setHex(0x1e3a8a);
                             light.groundColor.setHex(0x020202);
-                            light.intensity = 0.3;
+                            light.intensity = 0.6; // Matches new brighter baseline
                         }
                         if (fireflies) fireflies.visible = true;
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The ancient forest sleeps...");
                     }
                 } else {
-                    // GENERIC Islands (Sky, Cave, Mountains, etc.) - Simple Day/Night Toggle
-                    // Check if night (dark blue background)
-                    const isNight = scene.background instanceof THREE.Color && scene.background.getHex() === 0x050510;
-
-                    if (isNight) {
+                    // GENERIC Islands (Sky, Cave, Mountains, etc.)
+                    if (isDay) {
                         // Switch to Day
-                        scene.background = new THREE.Color(0x87ceeb); // Sky Blue
+                        scene.background = new THREE.Color(0x87ceeb);
                         scene.fog = new THREE.FogExp2(0x87ceeb, 0.005);
                         if (light) {
                             light.color.setHex(0xffffff);
@@ -490,12 +368,12 @@ function onClick(event: MouseEvent) {
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "Sunlight floods the island...");
                     } else {
                         // Switch to Night
-                        scene.background = new THREE.Color(0x050510); // Deep Space Blue
+                        scene.background = new THREE.Color(0x050510);
                         scene.fog = new THREE.FogExp2(0x050510, 0.015);
                         if (light) {
                             light.color.setHex(0x4455ff);
                             light.groundColor.setHex(0x222222);
-                            light.intensity = 0.6;
+                            light.intensity = 0.75; // Matches new brighter baseline
                         }
                         if (onWorldChangeCallback) onWorldChangeCallback(currentWorld, "The stars return...");
                     }
@@ -565,6 +443,9 @@ function switchWorld(worldName: string, notify: boolean = true) {
     }
 
     currentWorld = worldName;
+    (window as any).currentWorld = worldName;
+    window.dispatchEvent(new CustomEvent('world-switch', { detail: worldName }));
+    window.dispatchEvent(new CustomEvent('whisper-trigger'));
 
     // Update HUD Arm context
     if (hudArm) {
@@ -574,18 +455,30 @@ function switchWorld(worldName: string, notify: boolean = true) {
     scene.background = new THREE.Color(0x050510);
     scene.fog = new THREE.FogExp2(0x050510, 0.015);
 
-    // Reset player position for new world
-    player.position.set(0, 1.5, 0);
-
-    // Detach Dragon avatar if it was attached
-    const dragonAvatar = scene.getObjectByName('Dragon');
-    if (dragonAvatar) {
-        if (dragonAvatar.parent?.name === 'DragonSpirit') {
-            scene.add(dragonAvatar); // Move back to root
-            dragonAvatar.scale.set(5, 5, 1); // Reset scale to default
-        }
-        dragonAvatar.visible = true;
+    // Start with a standard orientation, but let switch decide specifics
+    playerState.position.set(0, 30.0, 0); // Dramatic drop in from above
+    if (worldName === 'CosmicHub') {
+        // Move player to an "observation" spot in the hub so they aren't inside the core
+        playerState.position.set(0, 8, 20);
     }
+    playerState.velocity.set(0, 0, 0);
+
+    // CRITICAL: Snap controls target immediately to avoid "dragging" view from old world
+    if (controls) {
+        controls.target.copy(playerState.position);
+        controls.update();
+    }
+
+    // Detach all potentially attached avatars
+    activeSprites.forEach(sprite => {
+        if (sprite.parent && sprite.parent !== scene) {
+            scene.add(sprite); // Direct to root
+        }
+        // Hub avatars should be slightly smaller to not block island markers
+        const s = worldName === 'CosmicHub' ? 3.0 : 5.0;
+        sprite.scale.set(s, s, 1);
+        sprite.visible = false; // Let updateAvatarBehaviors decide visibility
+    });
 
     switch (worldName) {
         case 'deskview': buildDeskviewWorld(scene); break;
@@ -597,17 +490,34 @@ function switchWorld(worldName: string, notify: boolean = true) {
         case 'sky': buildSkyIslandWorld(scene); break;
         case 'crops':
             buildMemoryCropsWorld(scene);
-            // Dragon Attachment Logic
+            // Special Attachment for Dragon
             const spirit = scene.getObjectByName('DragonSpirit');
+            const dragonAvatar = scene.getObjectByName('Dragon');
             if (spirit && dragonAvatar) {
                 spirit.add(dragonAvatar);
-                dragonAvatar.position.set(0, 0, 0.7); // Move to nose
+                dragonAvatar.position.set(0, 0, 0.7);
                 dragonAvatar.rotation.set(0, 0, 0);
-                dragonAvatar.scale.setScalar(8.0); // Make it BIG
+                dragonAvatar.scale.setScalar(8.0);
             }
             break;
         case 'waterfalls': buildWaterfallWorld(scene); break;
     }
+
+    // --- Animation Registry Optimization ---
+    // Instead of traversing the tree every frame, we collect everything that needs updates once
+    animatedObjects = [];
+    worldElements = [];
+    scene.traverse(obj => {
+        if (obj.userData.bobSpeed || obj.userData.rotateSpeed || obj.userData.pulseSpeed || obj.userData.onUpdate || obj.userData.center) {
+            animatedObjects.push(obj);
+        }
+        if (obj.userData.isWorldElement) {
+            worldElements.push(obj);
+        }
+    });
+
+    // --- BVH Optimization ---
+    computeWorldBVH();
 
     if (notify && onWorldChangeCallback) {
         let msg = `Entering ${worldName}...`;
@@ -620,4 +530,13 @@ function switchWorld(worldName: string, notify: boolean = true) {
         if (worldName === 'waterfalls') msg = '˚ ༘♡ ⋆｡˚ the endless flow... ˚ ༘♡ ⋆｡˚';
         onWorldChangeCallback(worldName, msg);
     }
+}
+
+function computeWorldBVH() {
+    scene.traverse(obj => {
+        if (obj instanceof THREE.Mesh && obj.userData.isWorldElement && obj.geometry) {
+            // @ts-ignore
+            obj.geometry.computeBoundsTree();
+        }
+    });
 }

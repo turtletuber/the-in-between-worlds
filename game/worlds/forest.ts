@@ -124,7 +124,7 @@ const createFireflies = (count = 20, area = 10) => {
 
 export function buildSequoiaForestWorld(scene: THREE.Scene) {
     addGradientSky(scene, 0x052e16, 0x064e3b); // Deep forest green/night
-    setupWorldLighting(scene, 0x4a7c59, 0x022c22, 0.4); // Dark, moody lighting
+    setupWorldLighting(scene, 0x4a7c59, 0x022c22, 0.6); // Brightened from 0.4
 
     // Ground
     const ground = new THREE.Mesh(new THREE.CylinderGeometry(40, 40, 1, 12), mat(0x1a2e1a));

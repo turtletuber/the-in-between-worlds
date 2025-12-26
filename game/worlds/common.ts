@@ -235,12 +235,12 @@ export const createWeatherStation = () => {
   group.userData.isWeatherStation = true;
   group.userData.isClickable = true;
 
-  // Add hitbox
+  // HUGE Invisible Hitbox for easy clicking
   const hitbox = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.8, 0.8, 3, 8),
+    new THREE.CylinderGeometry(1.5, 1.5, 5, 8), // Made much wider/taller
     new THREE.MeshBasicMaterial({ visible: false })
   );
-  hitbox.position.y = 1.5;
+  hitbox.position.y = 2.5; // Centered higher up to catch the spinning cups
   group.add(hitbox);
 
   return group;

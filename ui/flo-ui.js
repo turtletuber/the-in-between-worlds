@@ -15,6 +15,10 @@ export default class FloUI {
         this.nextBlink = Math.random() * 3000 + 2000;
         this.lastBlinkTime = 0;
         this.mood = 'happy';
+        this.tooltip = null;
+        this.tooltipTimeout = null;
+        this.asciiParticles = [];
+        this.asciiElements = {};
 
         // Floating movement state (cat-like behavior)
         this.position = { x: window.innerWidth - 100, y: 40 };
@@ -22,6 +26,8 @@ export default class FloUI {
         this.targetPosition = { x: this.position.x, y: this.position.y };
         this.isPaused = false;
         this.pauseEndTime = 0;
+        this.isForced = false;
+        this.forcedPosition = null;
         this.nextDirectionChange = Date.now() + 3000 + Math.random() * 4000;
 
         // Color shifting state
@@ -207,6 +213,7 @@ export default class FloUI {
         // Assemble
         this.avatar.appendChild(eyesContainer);
         this.avatar.appendChild(this.mouth);
+
         this.container.appendChild(this.avatar);
         document.body.appendChild(this.container);
 
@@ -258,11 +265,17 @@ export default class FloUI {
             this.nextBlink = Math.random() * 3000 + 2000;
         }
 
-        // Random mood changes (more variety with ASCII moods)
-        if (Math.random() < 0.0008) {
+        // Random mood changes & spontaneous emotes
+        if (Math.random() < 0.001) {
             const moods = ['happy', 'sleepy', 'surprised', 'content', 'playful'];
             this.mood = moods[Math.floor(Math.random() * moods.length)];
             this.updateMouth();
+
+            // Occasionally emote physically
+            if (Math.random() < 0.3 && !this.tooltip) {
+                const emotes = ["(^◡^)", "(o.o)", "(>ω<)", "(ᵕᗨᵕ)", "(˘⌣˘)"];
+                this.say(emotes[Math.floor(Math.random() * emotes.length)], 2500);
+            }
         }
 
         // Cat-like floating behavior
@@ -292,6 +305,17 @@ export default class FloUI {
         if (this.isDragging) return;
 
         const now = Date.now();
+
+        // 0. Forced behavior for tutorials
+        if (this.isForced && this.forcedPosition) {
+            this.position.x += (this.forcedPosition.x - this.position.x) * 0.05;
+            this.position.y += (this.forcedPosition.y - this.position.y) * 0.05;
+            const bob = Math.sin(now * 0.003) * 3;
+            this.container.style.left = `${this.position.x}px`;
+            this.container.style.top = `${this.position.y + bob}px`;
+            return;
+        }
+
         const dt = 16; // Approx delta for 60fps
 
         // Check if paused (cat stops to observe)
@@ -368,8 +392,15 @@ export default class FloUI {
 
         // Apply position with gentle bobbing (only Y)
         const bob = Math.sin(this.time * 0.003) * 3;
+        const fy = this.position.y + bob;
         this.container.style.left = `${this.position.x}px`;
-        this.container.style.top = `${this.position.y + bob}px`;
+        this.container.style.top = `${fy}px`;
+
+        // Update tooltip position if active
+        if (this.tooltip) {
+            this.tooltip.style.left = `${this.position.x + 35}px`;
+            this.tooltip.style.top = `${fy + 5}px`;
+        }
 
         // Update radial menu position if it exists
         if (window.radialMenu && window.radialMenu.positionOptionsContainer) {
@@ -478,6 +509,55 @@ export default class FloUI {
         }, 150);
     }
 
+    say(text, duration = 4000) {
+        if (this.tooltip) {
+            this.tooltip.remove();
+            if (this.tooltipTimeout) clearTimeout(this.tooltipTimeout);
+        }
+
+        this.tooltip = document.createElement('div');
+        this.tooltip.className = 'flo-tooltip';
+        this.tooltip.style.cssText = `
+            position: fixed;
+            z-index: 1001;
+            transform: translate(-50%, -100%);
+            color: #00ffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 5px #00ffff;
+            pointer-events: none;
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: -15px; /* Pull closer to Flo like radial label */
+            animation: floTooltipIn 0.3s ease-out forwards;
+        `;
+
+        this.tooltip.textContent = `[ ${text} ]`;
+
+        // Initial position sync (prevent bottom-left flash)
+        const bob = Math.sin(this.time * 0.003) * 3;
+        this.tooltip.style.left = `${this.position.x + 35}px`;
+        this.tooltip.style.top = `${this.position.y + bob + 5}px`;
+
+        document.body.appendChild(this.tooltip);
+
+        if (duration > 0) {
+            this.tooltipTimeout = setTimeout(() => {
+                if (this.tooltip) {
+                    this.tooltip.style.animation = 'floTooltipOut 0.3s ease forwards';
+                    setTimeout(() => {
+                        if (this.tooltip) {
+                            this.tooltip.remove();
+                            this.tooltip = null;
+                        }
+                    }, 300);
+                }
+            }, duration);
+        }
+    }
+
     setMood(mood) {
         this.mood = mood;
         this.updateMouth();
@@ -496,5 +576,22 @@ export default class FloUI {
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
+        if (this.tooltip) {
+            this.tooltip.remove();
+        }
     }
 }
+
+// Add CSS animations globally
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes floTooltipIn {
+        from { opacity: 0; transform: translate(-100%, -80%) scale(0.9); }
+        to { opacity: 1; transform: translate(-100%, -100%) scale(1); }
+    }
+    @keyframes floTooltipOut {
+        from { opacity: 1; transform: translate(-100%, -100%) scale(1); }
+        to { opacity: 0; transform: translate(-100%, -110%) scale(0.9); }
+    }
+`;
+document.head.appendChild(style);
