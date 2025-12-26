@@ -58,6 +58,10 @@ export default class RadialMenu {
   init(centerElement, menuOptions) {
     this.centerElement = centerElement;
 
+    // Dynamic Gear: Adjust spacing to fit the actual number of options
+    this.NUM_OPTIONS = menuOptions.length;
+    this.ANGLE_STEP = 360 / this.NUM_OPTIONS;
+
     // Create menu container that wraps the center element
     this.menuContainer = document.createElement('div');
     this.menuContainer.className = 'radial-menu';
