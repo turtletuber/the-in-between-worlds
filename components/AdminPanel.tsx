@@ -22,6 +22,8 @@ export const AdminPanel: React.FC = () => {
     const [vectorQuery, setVectorQuery] = useState('');
     const [vectorResults, setVectorResults] = useState<any[]>([]);
     const [vectorIngestText, setVectorIngestText] = useState('');
+    const [localUrl, setLocalUrl] = useState(AiService.getInstance().getLocalUrl());
+    const [isEditingUrl, setIsEditingUrl] = useState(false);
 
     useEffect(() => {
         const handleOpen = () => setIsOpen(true);
@@ -112,6 +114,21 @@ export const AdminPanel: React.FC = () => {
         }
     };
 
+    const handleNodePreset = (url: string) => {
+        AiService.getInstance().setLocalUrl(url);
+        setLocalUrl(url);
+        setIsEditingUrl(false);
+        setStatus('Node Endpoint Updated');
+        refreshData();
+    };
+
+    const handleManualUrlSave = () => {
+        AiService.getInstance().setLocalUrl(localUrl);
+        setIsEditingUrl(false);
+        setStatus('Custom Node Saved');
+        refreshData();
+    };
+
     const formatUptime = (ms: number) => {
         if (!ms) return '0s';
         const seconds = Math.floor(ms / 1000);
@@ -152,8 +169,8 @@ export const AdminPanel: React.FC = () => {
                         </div>
 
                         <div className="flex gap-4 text-neutral-500 text-[10px] uppercase tracking-wider border-l border-neutral-800 pl-4">
-                            <span className={llmMetrics.uptime_ms ? "text-green-500" : "text-red-500"}>● Node: 3001</span>
-                            <span className={vectorMetrics.total_vectors ? "text-green-500" : "text-red-500"}>● Vector: 5001</span>
+                            <span className={llmMetrics.uptime_ms ? "text-green-500" : "text-red-500"}>● Node: {llmMetrics.uptime_ms ? 'Active' : 'Offline'}</span>
+                            <span className={vectorMetrics.total_vectors ? "text-green-500" : "text-red-500"}>● Vector: {vectorMetrics.total_vectors ? 'Live' : 'No Data'}</span>
                         </div>
                     </div>
                     <button
@@ -247,6 +264,59 @@ export const AdminPanel: React.FC = () => {
                                 <div className="text-[10px] text-neutral-600 font-mono mt-2 truncate">
                                     Latest: {vectorMetrics.newest_document || 'None'}
                                 </div>
+                            </div>
+
+                            {/* Node Selection / URL Config */}
+                            <div className="col-span-2 p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-4">
+                                <h3 className="text-white font-bold text-[10px] uppercase tracking-widest flex justify-between items-center">
+                                    <span>Active Synchronicity Node</span>
+                                    <span className="text-cyan-500 font-mono lowercase">{localUrl}</span>
+                                </h3>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => handleNodePreset('http://raspberrypi.local:3001')}
+                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
+                                    >
+                                        RASPI (EDGE)
+                                    </button>
+                                    <button
+                                        onClick={() => handleNodePreset('http://localhost:3001')}
+                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
+                                    >
+                                        LAPTOP (LOCAL)
+                                    </button>
+                                    <button
+                                        onClick={() => handleNodePreset('http://desktop.local:3001')}
+                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
+                                    >
+                                        DESKTOP
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditingUrl(!isEditingUrl)}
+                                        className={`flex-1 py-2 border text-[10px] rounded transition-all ${isEditingUrl ? 'bg-cyan-900 border-cyan-500 text-cyan-100' : 'bg-neutral-900 border-neutral-700 text-neutral-400'}`}
+                                    >
+                                        {isEditingUrl ? 'CANCEL' : 'CUSTOM / CLOUD'}
+                                    </button>
+                                </div>
+
+                                {isEditingUrl && (
+                                    <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <input
+                                            type="text"
+                                            value={localUrl}
+                                            onChange={(e) => setLocalUrl(e.target.value)}
+                                            placeholder="Enter Cloudflare / Ngrok / Tunnel URL..."
+                                            className="flex-1 bg-black border border-neutral-700 px-3 py-2 text-cyan-400 rounded outline-none focus:border-cyan-500 transition-colors"
+                                        />
+                                        <button
+                                            onClick={handleManualUrlSave}
+                                            className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded transition-colors"
+                                        >
+                                            CONNECT
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

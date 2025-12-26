@@ -275,7 +275,7 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
             buffer.push(<div key="cel" className="whitespace-pre">{rows}</div>);
 
             buffer.push(<div key="cf" className={`${COLORS.cyan} ${COLORS.bold} mt-4 text-center whitespace-pre`}>
-                {"           ⟪ Task Complete - Neural Reward Activated ⟫"}
+                {"           ⟪ Task Complete - Synaptic Reward Activated ⟫"}
             </div>);
         }
         else if (currentPhase === 'complete') {

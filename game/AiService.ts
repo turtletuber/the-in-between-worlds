@@ -15,6 +15,21 @@ export class AiService {
         if (savedMode === 'local' || savedMode === 'cloud') {
             this.mode = savedMode;
         }
+
+        // Load persisted node URL
+        const savedUrl = localStorage.getItem('tomo-local-url');
+        if (savedUrl) {
+            this.localLlmUrl = savedUrl;
+        }
+    }
+
+    public getLocalUrl(): string {
+        return this.localLlmUrl;
+    }
+
+    public setLocalUrl(url: string): void {
+        this.localLlmUrl = url;
+        localStorage.setItem('tomo-local-url', url);
     }
 
     public static getInstance(): AiService {
@@ -74,7 +89,7 @@ export class AiService {
 
         } catch (e) {
             console.error('AI Service Error:', e);
-            const errorMsg = "Neural Link Unstable. Please ensure your local server is running and Cloudflare / local tunnel is active.";
+            const errorMsg = "Synaptic Stream Unstable. Please ensure your local server is running and Cloudflare / local tunnel is active.";
             onChunk(`[ ${errorMsg} ]`);
             return errorMsg;
         }

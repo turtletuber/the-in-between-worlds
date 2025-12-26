@@ -145,7 +145,7 @@ export const SidePanelOverlay: React.FC = () => {
             >
                 {messages.length === 0 && (
                     <div className="text-cyan-500/50 text-center mt-20 italic">
-                        System ready. Initializing neural link...
+                        System ready. Initializing synaptic stream...
                     </div>
                 )}
 
@@ -214,7 +214,7 @@ export const SidePanelOverlay: React.FC = () => {
                     </div>
                 </div>
                 <div className="text-[9px] text-cyan-900 tracking-widest uppercase">
-                    Neural Link Active
+                    Synaptic Stream Active
                 </div>
             </div>
 
