@@ -360,12 +360,10 @@ export default class FloUI {
             this.nextBlink = Math.random() * 3000 + 2000;
         }
 
-        // Random mood changes & spontaneous emotes
-        if (Math.random() < 0.001) {
-            const moods = ['happy', 'sleepy', 'surprised', 'content', 'playful'];
-            this.mood = moods[Math.floor(Math.random() * moods.length)];
-            this.updateMouth();
-
+        // Random mood changes
+        if (Math.random() < 0.002) {
+            const moods = ['happy', 'sleepy', 'surprised', 'content', 'content', 'content', 'playful'];
+            this.setMood(moods[Math.floor(Math.random() * moods.length)]);
         }
 
         // Cat-like floating behavior
