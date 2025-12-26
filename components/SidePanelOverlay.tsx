@@ -121,7 +121,7 @@ export const SidePanelOverlay: React.FC = () => {
             {/* Header */}
             <div className="relative z-10 px-6 py-4 border-b border-cyan-500/30 flex justify-between items-center bg-black/20 rounded-tr-3xl">
                 <div className="text-cyan-400 font-mono tracking-wider text-sm drop-shadow-[0_0_5px_rgba(0,255,255,0.8)]">
-                    ~/tomo/system/orchestration/..
+                    ~/tomo/system/neuro-orchestration/..
                 </div>
                 <div className="flex gap-4 items-center">
                     <div className="flex gap-2">
@@ -145,7 +145,7 @@ export const SidePanelOverlay: React.FC = () => {
             >
                 {messages.length === 0 && (
                     <div className="text-cyan-500/50 text-center mt-20 italic">
-                        System ready. Initializing synaptic stream...
+                        System ready. Priming synaptic pathways...
                     </div>
                 )}
 
@@ -188,7 +188,7 @@ export const SidePanelOverlay: React.FC = () => {
                         }}
                         onKeyUp={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
-                        placeholder="Transmit message..."
+                        placeholder="Enter cognitive thought..."
                         className="flex-1 bg-transparent border-none outline-none text-cyan-100 placeholder-cyan-700/50 font-mono h-10 select-text"
                         autoComplete="off"
                     />

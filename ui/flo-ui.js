@@ -41,6 +41,7 @@ export default class FloUI {
         this.createAvatar();
 
         // Drag events
+        // Mouse Drag events
         this.container.addEventListener('mousedown', (e) => this.startDrag(e));
         window.addEventListener('mousemove', (e) => {
             window.mouseX = e.clientX;
@@ -48,6 +49,11 @@ export default class FloUI {
             this.handleDrag(e);
         });
         window.addEventListener('mouseup', () => this.endDrag());
+
+        // Touch drag events
+        this.container.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: false });
+        window.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        window.addEventListener('touchend', () => this.endDrag());
 
         this.animate();
     }
@@ -103,10 +109,42 @@ export default class FloUI {
         this.mood = 'content';
         this.updateMouth();
 
-        // Reset velocity to 0 to prevent "flinging" accidentally, or maybe fling?
-        // Let's just pause for a second then resume wandering
+        // Reset velocity to 0 to prevent "flinging" accidentally
         this.pauseEndTime = Date.now() + 2000;
         this.isPaused = true;
+    }
+
+    handleTouchStart(e) {
+        if (e.touches.length > 1) return;
+        const touch = e.touches[0];
+
+        // Emulate mousedown
+        const mockEvent = {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            button: 0
+        };
+        this.startDrag(mockEvent);
+    }
+
+    handleTouchMove(e) {
+        if (!this.isDragging) return;
+        const touch = e.touches[0];
+
+        // Update global mouse for eyes etc
+        window.mouseX = touch.clientX;
+        window.mouseY = touch.clientY;
+
+        // Emulate mousemove
+        const mockEvent = {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        };
+        this.handleDrag(mockEvent);
+
+        // Only prevent default if we're actually dragging Flo
+        // This allows normal page scrolling if touching elsewhere
+        e.preventDefault();
     }
 
     createAvatar() {

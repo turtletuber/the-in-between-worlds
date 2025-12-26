@@ -140,8 +140,8 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
                 {`[${bar}] ${progress}%`}
             </div>);
 
-            const msgs = ["Initializing...", "Loading Avatars...", "Syncing...", "Done"];
-            const msg = msgs[Math.min(Math.floor(f / 20), 3)];
+            const msgs = ["Firing Neurons...", "Mapping Synapses...", "Calibrating Dendrites...", "Consciousness Ready"];
+            const msg = msgs[Math.min(Math.floor(f / 15), 3)];
             buffer.push(<div key="msg" className="mt-2 text-cyan-400">{`> ${msg}`}</div>);
         }
         else if (currentPhase === 'thinking') {
@@ -150,7 +150,7 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
             buffer.push(<div key="thk" className={`${COLORS.cyan} ${COLORS.bold} whitespace-pre`}>
                 {"╔════════════════════════════════════════════════════════════════╗\n"}
                 {`║  ${header.padEnd(62).substring(0, 62)}  ║\n`}
-                {"║           ⟪ M I N D   S P A C E   A C T I V E ⟫              ║\n"}
+                {"║           ⟪ S Y N A P T I C   S P A C E   A C T I V E ⟫          ║\n"}
                 {"╚════════════════════════════════════════════════════════════════╝"}
             </div>);
 
@@ -164,7 +164,7 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
             buffer.push(<div key="fld" className={`${COLORS.blue} opacity-70 whitespace-pre`}>{field}</div>);
 
             const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'][f % 10];
-            buffer.push(<div key="st" className={`mt-4 ${COLORS.cyan}`}>{`${spinner} Processing thoughts...`} <span className={COLORS.yellow}>{'█'.repeat(f % 10)}</span></div>);
+            buffer.push(<div key="st" className={`mt-4 ${COLORS.cyan}`}>{`${spinner} Firing synaptic signals...`} <span className={COLORS.yellow}>{'█'.repeat(f % 10)}</span></div>);
         }
         else if (currentPhase === 'matrix') {
             buffer.push(<div key="mh" className={`${COLORS.green} ${COLORS.bold} whitespace-pre`}>
@@ -221,7 +221,7 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
             }
             buffer.push(<div key="fld" className="whitespace-pre pl-4">{fluidRows}</div>);
             buffer.push(<div key="ft" className={`${COLORS.yellow} mt-4 text-center whitespace-pre`}>
-                {"    ~ Thoughts flowing organically ~\n    ~ Ideas merging and evolving ~"}
+                {"    ~ Synapses firing in harmony ~\n    ~ Ideas evolving from thought-streams ~"}
             </div>);
         }
         else if (currentPhase === 'idle') {

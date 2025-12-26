@@ -190,7 +190,7 @@ export const AdminPanel: React.FC = () => {
                             className={`flex-1 py-3 text-center uppercase tracking-widest hover:bg-neutral-800 transition-colors ${activeTab === tab ? 'bg-neutral-800 text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500'
                                 }`}
                         >
-                            {tab === 'dashboard' ? 'Metrics' : tab === 'prompt' ? 'System Prompt' : tab === 'ram' ? 'In-Memory (RAM)' : 'Vector DB (Disk)'}
+                            {tab === 'dashboard' ? 'Signals' : tab === 'prompt' ? 'Core Persona' : tab === 'ram' ? 'Synaptic Potentiation' : 'Lobe Memory (Disk)'}
                         </button>
                     ))}
                 </div>
@@ -211,8 +211,8 @@ export const AdminPanel: React.FC = () => {
                             {/* LLM Tile */}
                             <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-4">
                                 <h3 className="text-cyan-400 font-bold border-b border-neutral-700 pb-2 flex justify-between">
-                                    <span>LLM MIDDLEWARE</span>
-                                    <span className="text-neutral-500">Port: 3001</span>
+                                    <span>COGNITIVE CORE</span>
+                                    <span className="text-neutral-500">ACTIVE LOBE</span>
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -240,8 +240,8 @@ export const AdminPanel: React.FC = () => {
                             {/* Vector DB Tile */}
                             <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-4">
                                 <h3 className="text-purple-400 font-bold border-b border-neutral-700 pb-2 flex justify-between">
-                                    <span>VECTOR DATABASE</span>
-                                    <span className="text-neutral-500">Port: 5001</span>
+                                    <span>SYNAPTIC ARCHIVE</span>
+                                    <span className="text-neutral-500">LONG-TERM</span>
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -269,7 +269,7 @@ export const AdminPanel: React.FC = () => {
                             {/* Node Selection / URL Config */}
                             <div className="col-span-2 p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-4">
                                 <h3 className="text-white font-bold text-[10px] uppercase tracking-widest flex justify-between items-center">
-                                    <span>Active Synchronicity Node</span>
+                                    <span>Synaptic Stream Endpoint</span>
                                     <span className="text-cyan-500 font-mono lowercase">{localUrl}</span>
                                 </h3>
 

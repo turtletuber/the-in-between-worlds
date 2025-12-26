@@ -37,6 +37,13 @@ export default class RadialMenu {
     this.optionsContainer = null;
     this.options = [];
 
+    // Touch processing
+    this.isTouching = false;
+    this.lastTouchAngle = 0;
+    this.touchStartRotation = 0;
+    this.touchStartTime = 0;
+    this.touchMoved = false;
+
     // Callbacks
     this.onExpand = config.onExpand || null;
     this.onCollapse = config.onCollapse || null;
@@ -173,9 +180,15 @@ export default class RadialMenu {
 
     // Click handler
     option.addEventListener('click', (e) => {
+      if (this.touchMoved) return; // Ignore if we were just spinning the menu
       e.stopPropagation();
       this.handleOptionClick(config.label ? config : { ...config, label: this.options[index]?.dataset.label }, index);
     });
+
+    // Touch handler for faster response
+    option.addEventListener('touchstart', (e) => {
+      this.touchMoved = false;
+    }, { passive: true });
 
     return option;
   }
@@ -203,6 +216,72 @@ export default class RadialMenu {
 
     // Close menu when clicking outside
     document.addEventListener('click', this.handleOutsideClick.bind(this));
+
+    // Touch-specific rotation and interaction
+    this.optionsContainer.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+    window.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+    window.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+  }
+
+  /**
+   * Handle the start of a touch on the menu area
+   */
+  handleTouchStart(e) {
+    if (!this.menuExpanded) return;
+    this.isTouching = true;
+    this.touchMoved = false;
+    this.touchStartTime = Date.now();
+
+    const touch = e.touches[0];
+    this.lastTouchAngle = this.getAngleFromCenter(touch.clientX, touch.clientY);
+    this.touchStartRotation = this.currentRotation;
+  }
+
+  /**
+   * Handle touch movement (swipe to rotate)
+   */
+  handleTouchMove(e) {
+    if (!this.menuExpanded || !this.isTouching) return;
+
+    const touch = e.touches[0];
+    const currentAngle = this.getAngleFromCenter(touch.clientX, touch.clientY);
+
+    // Calculate angular delta
+    let delta = currentAngle - this.lastTouchAngle;
+
+    // Handle wrap-around
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+
+    if (Math.abs(delta) > 0.5) {
+      this.touchMoved = true;
+      e.preventDefault(); // Stop scrolling the page
+
+      this.currentRotation = (this.currentRotation + delta + 360) % 360;
+      this.updateOptionPositions();
+      this.lastTouchAngle = currentAngle;
+    }
+  }
+
+  /**
+   * Handle end of touch
+   */
+  handleTouchEnd(e) {
+    this.isTouching = false;
+  }
+
+  /**
+   * Helper to get angle from screen center to a point
+   */
+  getAngleFromCenter(x, y) {
+    const rect = this.centerElement.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const dx = x - centerX;
+    const dy = centerY - y; // Screen Y is flipped
+
+    return (Math.atan2(dy, dx) * 180) / Math.PI;
   }
 
   /**
