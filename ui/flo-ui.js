@@ -1,4 +1,5 @@
 // js/ui/flo-ui.js
+import anime from 'animejs/lib/anime.es.js';
 
 export default class FloUI {
     constructor() {
@@ -9,6 +10,7 @@ export default class FloUI {
         this.leftPupil = null;
         this.rightPupil = null;
         this.mouth = null;
+        this.shapePath = null;
 
         this.time = 0;
         this.isBlinking = false;
@@ -168,19 +170,72 @@ export default class FloUI {
         this.avatar.style.cssText = `
             width: 100%;
             height: 100%;
-            background: linear-gradient(145deg, #fffacd, #ffd700);
-            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-direction: column;
-            box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
-            border: 3px solid rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(10px);
             position: relative;
             overflow: visible;
             transition: transform 0.3s ease;
         `;
+
+        // SVG Shape Background
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.style.cssText = `
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 120%;
+            height: 120%;
+            z-index: -1;
+            filter: drop-shadow(0 8px 16px rgba(255, 215, 0, 0.4));
+        `;
+
+        this.shapePath = document.createElementNS(svgNS, "path");
+
+        // Path Definitions (all 8 points for smooth morphing)
+        this.paths = {
+            // Circle-ish (8 points)
+            orb: "M50,10 C62,10 75,15 82,25 C90,35 90,50 90,62 C90,75 80,90 62,90 C50,90 35,90 25,82 C15,75 10,65 10,50 C10,35 15,22 25,12 C35,5 45,10 50,10 Z",
+            // Star-ish (8 points)
+            star: "M50,5 L65,35 L95,45 L70,65 L80,95 L50,80 L20,95 L30,65 L5,45 L35,35 Z",
+            // Sleepy/Puddle
+            sleepy: "M50,40 C70,40 90,45 95,65 C100,85 80,95 50,95 C20,95 0,85 5,65 C10,45 30,40 50,40 Z",
+            // Surprised/Octagon
+            surprised: "M50,5 L85,15 L95,50 L85,85 L50,95 L15,85 L5,50 L15,15 Z"
+        };
+
+        this.shapePath.setAttribute("d", this.paths.orb);
+        this.shapePath.setAttribute("fill", "url(#floGradient)");
+        this.shapePath.style.transition = "fill 0.5s ease";
+
+        // Gradient for SVG
+        const defs = document.createElementNS(svgNS, "defs");
+        const grad = document.createElementNS(svgNS, "linearGradient");
+        grad.setAttribute("id", "floGradient");
+        grad.setAttribute("x1", "0%");
+        grad.setAttribute("y1", "0%");
+        grad.setAttribute("x2", "100%");
+        grad.setAttribute("y2", "100%");
+
+        const stop1 = document.createElementNS(svgNS, "stop");
+        stop1.setAttribute("offset", "0%");
+        stop1.setAttribute("stop-color", "#fffacd");
+        this.stop1 = stop1;
+
+        const stop2 = document.createElementNS(svgNS, "stop");
+        stop2.setAttribute("offset", "100%");
+        stop2.setAttribute("stop-color", "#ffd700");
+        this.stop2 = stop2;
+
+        grad.appendChild(stop1);
+        grad.appendChild(stop2);
+        defs.appendChild(grad);
+        svg.appendChild(defs);
+        svg.appendChild(this.shapePath);
+        this.avatar.appendChild(svg);
 
         // Eyes container
         const eyesContainer = document.createElement('div');
@@ -329,14 +384,15 @@ export default class FloUI {
     }
 
     updateColors() {
-        if (!this.avatar) return;
+        if (!this.avatar || !this.stop1 || !this.stop2) return;
         // Smooth pastel gradient cycle
         const c1 = `hsl(${this.hue}, 100%, 85%)`;
         const c2 = `hsl(${(this.hue + 30) % 360}, 100%, 70%)`;
-        const shadow = `hsla(${this.hue}, 90%, 60%, 0.3)`;
+        // const shadow = `hsla(${this.hue}, 90%, 60%, 0.3)`;
 
-        this.avatar.style.background = `linear-gradient(145deg, ${c1}, ${c2})`;
-        this.avatar.style.boxShadow = `0 8px 32px ${shadow}`;
+        this.stop1.setAttribute("stop-color", c1);
+        this.stop2.setAttribute("stop-color", c2);
+        // this.avatar.style.boxShadow = `0 8px 32px ${shadow}`;
     }
 
     updateFloatingMovement() {
@@ -597,8 +653,24 @@ export default class FloUI {
     }
 
     setMood(mood) {
+        if (this.mood === mood) return;
         this.mood = mood;
         this.updateMouth();
+
+        // Morph Shape if we have a path definition for the new mood
+        let targetPath = this.paths.orb;
+        if (mood === 'playful') targetPath = this.paths.star;
+        if (mood === 'sleepy') targetPath = this.paths.sleepy;
+        if (mood === 'surprised') targetPath = this.paths.surprised;
+
+        anime({
+            targets: this.shapePath,
+            d: [
+                { value: targetPath }
+            ],
+            easing: 'spring(1, 80, 10, 0)',
+            duration: 800
+        });
     }
 
     show() {
