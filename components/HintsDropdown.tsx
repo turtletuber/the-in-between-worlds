@@ -15,7 +15,14 @@ export const HintsDropdown: React.FC = () => {
     const [current, setCurrent] = useState(WHISPERS[0]);
     const [fade, setFade] = useState(true);
 
+    const [headerVisible, setHeaderVisible] = useState(true);
+
     useEffect(() => {
+        // Hide header after 10 seconds
+        const headerTimer = setTimeout(() => {
+            setHeaderVisible(false);
+        }, 10000);
+
         let timeout: NodeJS.Timeout;
 
         const triggerWhisper = () => {
@@ -57,8 +64,8 @@ export const HintsDropdown: React.FC = () => {
     return (
         <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 pointer-events-none text-center mix-blend-screen w-full max-w-2xl px-4">
 
-            {/* ASCII Header */}
-            <div className="text-[10px] md:text-xs text-cyan-500/40 font-mono tracking-[0.5em] mb-2">
+            {/* ASCII Header - Fades out after 10s */}
+            <div className={`text-[10px] md:text-xs text-cyan-500/40 font-mono tracking-[0.5em] mb-2 transition-opacity duration-[3000ms] ${headerVisible ? 'opacity-100' : 'opacity-0'}`}>
                 . . . T H E   I N   B E T W E E N . . .
             </div>
 

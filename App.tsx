@@ -100,7 +100,6 @@ export default function App() {
 
           {/* HUD Layer */}
           <div className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}>
-            <MetricsHUD />
             <HintsDropdown />
             <HotkeyHelp />
           </div>
