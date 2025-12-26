@@ -466,7 +466,11 @@ function switchWorld(worldName: string, notify: boolean = true) {
     scene.fog = new THREE.FogExp2(0x050510, 0.015);
 
     // Start with a standard orientation, but let switch decide specifics
+    // Start with a standard orientation, but let switch decide specifics
     playerState.position.set(0, 30.0, 0); // Dramatic drop in from above
+    if (worldName === 'campground') {
+        playerState.position.set(4, 30, 4);
+    }
     if (worldName === 'CosmicHub') {
         // Move player to an "observation" spot in the hub so they aren't inside the core
         playerState.position.set(0, 8, 20);

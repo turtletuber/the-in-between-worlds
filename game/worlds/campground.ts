@@ -406,6 +406,16 @@ export function buildCampgroundWorld(scene: THREE.Scene) {
     fireGroup.position.y = 0.2;
     addWorldElement(scene, fireGroup);
 
+    // Landing / Spawn Point Marker (Dirt Patch)
+    const dirtPatch = new THREE.Mesh(
+        new THREE.CircleGeometry(1.2, 8),
+        mat(0x2a1a0a, 0x000000, 0.8)
+    );
+    dirtPatch.rotation.x = -Math.PI / 2;
+    dirtPatch.position.set(4, 0.01, 4); // Slightly above ground to prevent Z-fighting
+    dirtPatch.receiveShadow = true;
+    addWorldElement(scene, dirtPatch);
+
     const fireLight = new THREE.PointLight(0xff7700, 8, 45);
     fireLight.position.set(0, 3, 0);
     fireLight.userData.pulseSpeed = 8;

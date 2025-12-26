@@ -14,7 +14,7 @@ export interface PlayerState {
 export const keys = { w: false, a: false, s: false, d: false, space: false };
 
 export const playerState: PlayerState = {
-    position: new THREE.Vector3(0, 1.5, 0),
+    position: new THREE.Vector3(4, 1.5, 4),
     velocity: new THREE.Vector3(),
     acceleration: 45.0,
     friction: 0.88,
