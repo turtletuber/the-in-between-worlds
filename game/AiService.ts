@@ -5,9 +5,9 @@ export class AiService {
 
     // Configuration
     private mode: 'local' | 'cloud' = 'local';
-    private localLlmUrl: string = 'http://localhost:3001';
+    private localLlmUrl: string = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
     private cloudLlmUrl: string = 'https://api.tomo-cloud.com/v1'; // Placeholder
-    private vectorEndpoint: string = 'http://localhost:5001/api';
+    private vectorEndpoint: string = (import.meta as any).env.VITE_VECTOR_URL || 'http://localhost:5001/api';
 
     private constructor() {
         // Load persisted mode
@@ -74,8 +74,9 @@ export class AiService {
 
         } catch (e) {
             console.error('AI Service Error:', e);
-            onChunk('[Error connecting to Neural Link]');
-            return '[Error connecting to Neural Link]';
+            const errorMsg = "Neural Link Unstable. Please ensure your local server is running and Ngrok tunnel is active.";
+            onChunk(`[ ${errorMsg} ]`);
+            return errorMsg;
         }
     }
 
