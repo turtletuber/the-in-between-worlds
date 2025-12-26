@@ -27,8 +27,13 @@ export const AdminPanel: React.FC = () => {
 
     useEffect(() => {
         const handleOpen = () => setIsOpen(true);
+        const handleClose = () => setIsOpen(false);
         window.addEventListener('open-admin-panel', handleOpen);
-        return () => window.removeEventListener('open-admin-panel', handleOpen);
+        window.addEventListener('close-admin-panel-mobile', handleClose);
+        return () => {
+            window.removeEventListener('open-admin-panel', handleOpen);
+            window.removeEventListener('close-admin-panel-mobile', handleClose);
+        };
     }, []);
 
     useEffect(() => {

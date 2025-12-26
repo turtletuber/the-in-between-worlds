@@ -138,6 +138,10 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
 
     window.addEventListener('click', onClick);
 
+    // Global Close Listeners
+    const handleCloseSide = () => hudArm.retract();
+    window.addEventListener('close-side-panel', handleCloseSide);
+
     // Start the guided tutorial
     new TutorialManager();
 
@@ -146,6 +150,7 @@ export function initScene(container: HTMLElement, onWorldChange: (name: string, 
     return () => {
         if (animationId) cancelAnimationFrame(animationId);
         window.removeEventListener('click', onClick);
+        window.removeEventListener('close-side-panel', handleCloseSide);
         cleanupInput();
     };
 }

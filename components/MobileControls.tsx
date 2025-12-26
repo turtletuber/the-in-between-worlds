@@ -132,18 +132,32 @@ export const MobileControls: React.FC = () => {
                 {/* N64 Style Action Buttons */}
                 <div className="flex flex-col items-center gap-4 pointer-events-auto pr-4">
                     <div className="relative w-32 h-32">
-                        {/* Button B (Top Left-ish) */}
+                        {/* Button B (Top Left-ish) - Back / Exit / No */}
                         <div
                             className="absolute top-2 left-2 w-14 h-14 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90 opacity-80"
+                            onTouchStart={() => {
+                                // 1. Close Flo Radial Menu
+                                if ((window as any).radialMenu) {
+                                    (window as any).radialMenu.collapse();
+                                }
+                                // 2. Close Side Panel (Chat etc)
+                                window.dispatchEvent(new CustomEvent('close-side-panel'));
+                                // 3. Close Admin Panel
+                                window.dispatchEvent(new CustomEvent('close-admin-panel-mobile')); // We'll add a listener for this
+                            }}
                             style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
                         >
                             <span className="text-white font-black italic text-xl drop-shadow-md">B</span>
                         </div>
 
-                        {/* Button A (Bottom Right-ish) */}
+                        {/* Button A (Bottom Right-ish) - OK / Forward / Jump */}
                         <div
                             className="absolute bottom-2 right-2 w-14 h-14 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
-                            onTouchStart={() => { keys.space = true; }}
+                            onTouchStart={() => {
+                                keys.space = true;
+                                // Can also be used to confirm dialogues or move forward in tutorials
+                                window.dispatchEvent(new CustomEvent('confirm-action'));
+                            }}
                             onTouchEnd={() => { keys.space = false; }}
                             style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
                         >
