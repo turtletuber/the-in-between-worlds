@@ -18,6 +18,15 @@ export const MobileControls: React.FC = () => {
         // Pinch to Zoom Logic
         const handleTouchStart = (e: TouchEvent) => {
             if (e.touches.length === 2) {
+                // If any finger is on a UI element (joystick/buttons), ignore pinch
+                for (let i = 0; i < e.touches.length; i++) {
+                    const target = e.touches[i].target as HTMLElement;
+                    if (target && target.closest('.pointer-events-auto')) {
+                        lastPinchDist.current = null;
+                        return;
+                    }
+                }
+
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 lastPinchDist.current = Math.sqrt(dx * dx + dy * dy);
@@ -26,6 +35,14 @@ export const MobileControls: React.FC = () => {
 
         const handleTouchMove = (e: TouchEvent) => {
             if (e.touches.length === 2 && lastPinchDist.current !== null) {
+                // Also double check move targets just in case
+                for (let i = 0; i < e.touches.length; i++) {
+                    const target = e.touches[i].target as HTMLElement;
+                    if (target && target.closest('.pointer-events-auto')) {
+                        return;
+                    }
+                }
+
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.sqrt(dx * dx + dy * dy);

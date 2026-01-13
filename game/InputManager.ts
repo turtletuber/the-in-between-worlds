@@ -39,9 +39,14 @@ export function setupInputHandlers(context: InputContext) {
         if (key === 'd') playerKeys.d = true;
         if (key === ' ') playerKeys.space = true;
 
-        // HUD Toggle
-        if (key === 'm' || key === 'h') {
+        // Mech Arm / Chat: [
+        if (key === '[') {
             if (context.hudArm) context.hudArm.toggle();
+        }
+
+        // Admin Panel: ]
+        if (key === ']') {
+            window.dispatchEvent(new CustomEvent('toggle-admin-panel'));
         }
 
         // Performance Toggle

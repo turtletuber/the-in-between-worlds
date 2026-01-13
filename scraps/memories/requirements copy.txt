@@ -1,8 +1,0 @@
-annoy==1.17.3
-sentence-transformers==5.1.2
-torch==2.9.0
-numpy==2.3.4
-scipy==1.16.2
-scikit-learn==1.7.2
-flask==3.1.2
-tqdm==4.67.1

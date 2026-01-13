@@ -9,6 +9,21 @@ interface ChatMessage {
 export const SidePanelOverlay: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+    const initialGreeting = `(^_~) If you've set up Tomo at this point, you are probably just curious.
+
+But in the future, I will help you accomplish goals and tasks. We will both level up together.
+
+I will handle speeding things up, so there is no value in trying to rush. In fact, I might get in the way of that, cause I'm quirky.
+
+My approach will be ensuring you stay in a state of play about achieving whatever it is that you are working towards. Like learning a new skill, getting some tasks off your plate, or just someone to bounce some ideas off of. 
+
+My goal is to keep you in flow. Oh and I'm powered by Tomo, our orchestration layer on your favorite local model. Tomo is short for Tomodatchi, the Japanese word for friends.
+
+It's not just me, let's meet the squad.
+
+- Flo`;
+
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const [tokens, setTokens] = useState(0);
@@ -36,10 +51,19 @@ export const SidePanelOverlay: React.FC = () => {
         window.addEventListener('ai-latency', handleLatency as EventListener);
         window.addEventListener('ai-tokens', handleTokens as EventListener);
 
+        const handleGreeting = () => {
+            setMessages([{ role: 'assistant', content: initialGreeting }]);
+            //setIsVisible(true);
+        };
+        window.addEventListener('trigger-greeting', handleGreeting);
+
+        // RAPID MODE AUTO-OPEN REMOVED AS PER USER REQUEST
+
         return () => {
             window.removeEventListener('side-panel-state', handleStateChange as EventListener);
             window.removeEventListener('ai-latency', handleLatency as EventListener);
             window.removeEventListener('ai-tokens', handleTokens as EventListener);
+            window.removeEventListener('trigger-greeting', handleGreeting);
         };
     }, []);
 

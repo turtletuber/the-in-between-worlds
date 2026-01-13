@@ -17,6 +17,8 @@ export const AdminPanel: React.FC = () => {
     const [llmMetrics, setLlmMetrics] = useState<any>({});
     const [vectorMetrics, setVectorMetrics] = useState<any>({});
     const [aiMode, setAiMode] = useState<'local' | 'cloud'>(AiService.getInstance().getMode());
+    const [provider, setProvider] = useState(AiService.getInstance().getProvider());
+    const [activeModel, setActiveModel] = useState<string>('Detecting...');
 
     // Vector DB State
     const [vectorQuery, setVectorQuery] = useState('');
@@ -28,13 +30,29 @@ export const AdminPanel: React.FC = () => {
     useEffect(() => {
         const handleOpen = () => setIsOpen(true);
         const handleClose = () => setIsOpen(false);
+        const handleToggle = () => setIsOpen(prev => !prev);
+        const handleModelChange = (e: any) => setActiveModel(e.detail.model);
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                setIsOpen(false);
+            }
+        };
+
         window.addEventListener('open-admin-panel', handleOpen);
+        window.addEventListener('toggle-admin-panel', handleToggle);
         window.addEventListener('close-admin-panel-mobile', handleClose);
+        window.addEventListener('ai-model-active', handleModelChange);
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
             window.removeEventListener('open-admin-panel', handleOpen);
+            window.removeEventListener('toggle-admin-panel', handleToggle);
             window.removeEventListener('close-admin-panel-mobile', handleClose);
+            window.removeEventListener('ai-model-active', handleModelChange);
+            window.removeEventListener('keydown', handleKeyDown);
         };
-    }, []);
+    }, [isOpen]);
 
     useEffect(() => {
         let interval: any;
@@ -144,6 +162,19 @@ export const AdminPanel: React.FC = () => {
         return `${seconds}s`;
     };
 
+    const handleProviderChange = (newProvider: 'raspi' | 'desktop' | 'gemini') => {
+        AiService.getInstance().setProvider(newProvider);
+        setProvider(newProvider);
+        setStatus(`Switched Brain to ${newProvider.toUpperCase()}`);
+        setTimeout(() => setStatus(''), 2000);
+
+        // Auto-update URL based on common presets if applicable
+        if (newProvider === 'raspi') handleNodePreset('http://tomo-pi.local:3001');
+        else if (newProvider === 'desktop' && localUrl.includes('localhost')) {
+            // Keep current URL or maybe we should default to a tunnel placeholder
+        }
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -217,9 +248,13 @@ export const AdminPanel: React.FC = () => {
                             <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-4">
                                 <h3 className="text-cyan-400 font-bold border-b border-neutral-700 pb-2 flex justify-between">
                                     <span>COGNITIVE CORE</span>
-                                    <span className="text-neutral-500">ACTIVE LOBE</span>
+                                    <span className="text-neutral-500">{activeModel.toUpperCase()}</span>
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="text-neutral-500">Active Brain</div>
+                                        <div className="text-sm font-bold text-white truncate">{activeModel}</div>
+                                    </div>
                                     <div>
                                         <div className="text-neutral-500">Total Requests</div>
                                         <div className="text-2xl text-white">{llmMetrics.total_requests || 0}</div>
@@ -274,34 +309,46 @@ export const AdminPanel: React.FC = () => {
                             {/* Node Selection / URL Config */}
                             <div className="col-span-2 p-4 bg-neutral-950 border border-neutral-800 rounded-lg space-y-4">
                                 <h3 className="text-white font-bold text-[10px] uppercase tracking-widest flex justify-between items-center">
-                                    <span>Synaptic Stream Endpoint</span>
-                                    <span className="text-cyan-500 font-mono lowercase">{localUrl}</span>
+                                    <span>Cognitive Worker (The Brain)</span>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => handleProviderChange('gemini')}
+                                            className={`px-3 py-1 rounded-sm text-[9px] border transition-all ${provider === 'gemini' ? 'bg-indigo-900 border-indigo-400 text-indigo-100' : 'bg-neutral-900 border-neutral-800 text-neutral-500'}`}
+                                        >
+                                            GEMINI (CLOUD)
+                                        </button>
+                                        <button
+                                            onClick={() => handleProviderChange('raspi')}
+                                            className={`px-3 py-1 rounded-sm text-[9px] border transition-all ${provider === 'raspi' ? 'bg-cyan-900 border-cyan-400 text-cyan-100' : 'bg-neutral-900 border-neutral-800 text-neutral-500'}`}
+                                        >
+                                            SMOL BOI (PI)
+                                        </button>
+                                        <button
+                                            onClick={() => handleProviderChange('desktop')}
+                                            className={`px-3 py-1 rounded-sm text-[9px] border transition-all ${provider === 'desktop' ? 'bg-emerald-900 border-emerald-400 text-emerald-100' : 'bg-neutral-900 border-neutral-800 text-neutral-500'}`}
+                                        >
+                                            BIG BOI (RTX)
+                                        </button>
+                                    </div>
                                 </h3>
 
                                 <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleNodePreset('http://raspberrypi.local:3001')}
-                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
-                                    >
-                                        RASPI (EDGE)
-                                    </button>
+                                    <div className="px-3 py-1 text-[9px] text-neutral-500 bg-neutral-900 border border-neutral-800 rounded flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        API GATEWAY: {localUrl}
+                                    </div>
+                                    <div className="flex-1"></div>
                                     <button
                                         onClick={() => handleNodePreset('http://localhost:3001')}
-                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
+                                        className="py-1 px-4 bg-indigo-900 border border-indigo-500 hover:border-indigo-400 text-[9px] text-white rounded transition-all shadow-[0_0_10px_rgba(79,70,229,0.3)]"
                                     >
-                                        LAPTOP (LOCAL)
-                                    </button>
-                                    <button
-                                        onClick={() => handleNodePreset('http://desktop.local:3001')}
-                                        className="flex-1 py-2 bg-neutral-900 border border-neutral-700 hover:border-cyan-500 text-[10px] rounded transition-all"
-                                    >
-                                        DESKTOP
+                                        ACTIVATE MAC GATEWAY
                                     </button>
                                     <button
                                         onClick={() => setIsEditingUrl(!isEditingUrl)}
-                                        className={`flex-1 py-2 border text-[10px] rounded transition-all ${isEditingUrl ? 'bg-cyan-900 border-cyan-500 text-cyan-100' : 'bg-neutral-900 border-neutral-700 text-neutral-400'}`}
+                                        className={`py-1 px-4 border text-[9px] rounded transition-all ${isEditingUrl ? 'bg-cyan-900 border-cyan-500 text-cyan-100' : 'bg-neutral-900 border-neutral-700 text-neutral-400'}`}
                                     >
-                                        {isEditingUrl ? 'CANCEL' : 'CUSTOM / CLOUD'}
+                                        {isEditingUrl ? 'CANCEL' : 'CUSTOM'}
                                     </button>
                                 </div>
 

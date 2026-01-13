@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 const HOTKEYS = [
     { key: 'W A S D', desc: 'Movement' },
-    { key: 'Click', desc: 'Interact / Walk' },
-    { key: 'H', desc: 'Toggle HUD' },
-    { key: 'M', desc: 'Mech Arm' },
-    { key: 'L', desc: 'Low Power' },
+    { key: '[', desc: 'Chat / Mech Arm' },
+    { key: ']', desc: 'Admin Panel' },
+    { key: '\\', desc: 'Synaptic Logs' },
+    { key: 'Esc', desc: 'Close Panel' },
     { key: '0 - 8', desc: 'Teleport' },
 ];
 

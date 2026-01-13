@@ -85,7 +85,7 @@ export class TutorialManager {
                 this.flo.say("MAGICAL", 3000);
 
                 setTimeout(() => {
-                    const msg = this.isMobile ? "PINCH OUT TO BREAKTHROUGH" : "SCROLL OUT TO BREAKTHROUGH";
+                    const msg = this.isMobile ? "to zoom out, pinch screen" : "to zoom out, scroll";
                     this.flo.say(msg, 0);
                     this.listenForZoom();
                 }, 3500);

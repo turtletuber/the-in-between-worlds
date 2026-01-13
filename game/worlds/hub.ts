@@ -56,6 +56,55 @@ export function buildCosmicHubWorld(scene: THREE.Scene) {
     ringGroup.userData.rotateSpeed = -0.08;
     addWorldElement(scene, ringGroup);
 
+    // --- CYAN TECH ARRIVAL PLATFORM ---
+    const arrivalGroup = new THREE.Group();
+    arrivalGroup.position.set(15, 8, 15);
+
+    // 1. Hexagonal Base (1/4 scaled)
+    const plateGeo = new THREE.CylinderGeometry(1, 1.05, 0.1, 6);
+    const plateMat = new THREE.MeshStandardMaterial({
+        color: 0x001122,
+        emissive: 0x00ffff,
+        emissiveIntensity: 0.1,
+        transparent: true,
+        opacity: 0.9,
+        metalness: 0.9,
+        roughness: 0.1,
+    });
+    const plate = new THREE.Mesh(plateGeo, plateMat);
+    arrivalGroup.add(plate);
+
+    // 2. Cyan Glowing Rim (1/4 scaled)
+    const rimGeo = new THREE.TorusGeometry(1.025, 0.015, 16, 6);
+    const rimMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.06;
+    arrivalGroup.add(rim);
+
+    // 3. Bottom Tech Support (1/4 scaled)
+    const support = new THREE.Mesh(
+        new THREE.ConeGeometry(0.875, 1, 6),
+        mat(0x050510)
+    );
+    support.rotation.x = Math.PI;
+    support.position.y = -0.5;
+    arrivalGroup.add(support);
+
+    // 4. Floating Tech Bits (1/4 scaled)
+    for (let i = 0; i < 3; i++) {
+        const bit = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.2), mat(0x00ffff, 0x00ffff));
+        const angle = (i / 3) * Math.PI * 2;
+        bit.position.set(Math.cos(angle) * 1.5, 0, Math.sin(angle) * 1.5);
+        bit.userData.rotateSpeed = 2.0;
+        bit.userData.bobSpeed = 1.0 + i;
+        bit.userData.bobHeight = 0.1;
+        bit.userData.baseY = 0;
+        arrivalGroup.add(bit);
+    }
+
+    addWorldElement(scene, arrivalGroup);
+
     const islands = hubIslands;
     islands.forEach(data => {
         const group = new THREE.Group();

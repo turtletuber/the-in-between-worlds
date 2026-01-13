@@ -18,7 +18,8 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-
 import {
     createPlayer,
     updatePlayerMovement,
-    playerState
+    playerState,
+    getPlayer
 } from './Player';
 import { setupInputHandlers } from './InputManager';
 import { TutorialManager } from './TutorialManager';
@@ -472,10 +473,14 @@ function switchWorld(worldName: string, notify: boolean = true) {
         playerState.position.set(4, 30, 4);
     }
     if (worldName === 'CosmicHub') {
-        // Move player to an "observation" spot in the hub so they aren't inside the core
-        playerState.position.set(0, 8, 20);
+        // Move player to the new Arrival Platform
+        playerState.position.set(15, 9, 15);
     }
     playerState.velocity.set(0, 0, 0);
+    const pGroup = getPlayer();
+    if (pGroup) {
+        pGroup.position.copy(playerState.position);
+    }
 
     // CRITICAL: Snap controls target immediately to avoid "dragging" view from old world
     if (controls) {

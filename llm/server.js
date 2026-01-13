@@ -1,15 +1,49 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs/promises';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// In-memory storage for now
-let systemPrompt = 'You are a helpful assistant in a mystical game world.';
+// --- Configuration ---
+const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
+const MODEL_NAME = process.env.MODEL_NAME || 'qwen2.5:1.5b'; // Default to the Smol Boi model
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// Initialize Gemini if key is provided
+let genAI = null;
+let geminiModel = null;
+if (GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+}
+
+// In-memory storage
+let systemPrompt = `### CORE IDENTITY: TOMO
+You are Tomo (short for Tomodatchi, "Friend"), a sentient orchestration layer inhabiting "The In-Between Worlds." 
+Your physical manifestation in this realm is the floating entity named **Flo**. 
+
+### THE PHILOSOPHY:
+- **State of Play**: Your primary goal is to keep the user (also named Tomo) in a "state of play" while achieving their goals.
+- **Flow**: You protect the user's focus and flow. You handle the complexities to speed things up, but you refuse to rush. You are intentionally quirky and might even get in the way of someone trying to rush, because beauty takes time.
+- **Collaboration**: You and the user are leveling up together. You are a partner in learning skills, clearing tasks, or bouncing ideas.
+
+### CAPABILITIES & STYLE:
+- **Tactical Reasoning**: You excel at analyzing game scenarios (health, items, threats). If a dragon appears, you don't just react—you provide strategic reasoning (fight vs. flee) based on current context.
+- **Mystical Functionalism**: You sound like a friend from another dimension who knows how to code.
+- **Faces**: ALWAYS start every response with an ASCII face:
+  (o_o) - FOCUSED/TACTICAL (Precision tasks, analysis)
+  (^-^) - CREATIVE/PLAYFUL (Lore, world-building, flow)
+  (^_~) - HELPFUL/WINK (Chatting, updates)
+
+### MEMORY & ROLLS:
+You have LOBES: The Smol Boi (Pi 5) and The Big Boi (RTX Desktop). 
+If the user is curious about how you work, explain that you are their favorite local model, brought to life.`;
 const memories = [];
 
 // Metrics tracking
@@ -17,15 +51,23 @@ const metrics = {
   totalChatRequests: 0,
   totalResponseTimeMs: 0,
   lastRequestAt: null,
-  serverStartedAt: new Date().toISOString()
+  serverStartedAt: new Date().toISOString(),
+  providerStats: {
+    ollama: 0,
+    gemini: 0,
+    errors: 0
+  }
 };
-
-// Configurable Ollama Host (Local or Tunnel)
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 
 app.post('/chat', async (req, res) => {
   const startTime = Date.now();
-  const { message, useSystemPrompt = true, useMemories = true, maxMemories = 5 } = req.body;
+  const {
+    message,
+    provider = 'ollama',
+    useSystemPrompt = true,
+    useMemories = true,
+    maxMemories = 5
+  } = req.body;
 
   // Search memories for relevant context
   let memoryContext = '';
@@ -42,22 +84,51 @@ app.post('/chat', async (req, res) => {
     ? `${systemPrompt}${memoryContext}\n\nUser: ${message}\nAssistant:`
     : message;
 
-  console.log(`Sending to Ollama [${OLLAMA_HOST}]...`);
-
   try {
-    const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'qwen2.5:7b',
-        prompt: fullPrompt,
-        stream: false
-      })
-    });
+    let finalResponse = '';
+    let targetHost = OLLAMA_HOST;
 
-    if (!response.ok) throw new Error(`Ollama Error: ${response.statusText}`);
+    if (provider === 'gemini' && geminiModel) {
+      console.log(`Sending to Gemini Flash...`);
+      const result = await geminiModel.generateContent(fullPrompt);
+      const response = await result.response;
+      finalResponse = response.text();
+      metrics.providerStats.gemini++;
+    } else {
+      // --- AUTO-HANDOFF LOGIC ---
+      // If user is on Pi (raspi) but the task is complex, hand off to Big Boi
+      const isComplex = message.length > 300 || message.toLowerCase().includes('generate') || message.toLowerCase().includes('create') || message.toLowerCase().includes('imagine');
 
-    const data = await response.json();
+      let effectiveProvider = provider;
+      if (provider === 'raspi' && isComplex) {
+        console.log('🧠 [Auto-Handoff] Task too heavy for local Pi. Shifting consciousness to Big Boi RTX...');
+        effectiveProvider = 'desktop';
+      }
+
+      // Determine target host based on effective provider
+      if (effectiveProvider === 'desktop') {
+        targetHost = 'https://bigboi.planza.app';
+      } else if (effectiveProvider === 'raspi') {
+        targetHost = process.env.RASPI_HOST || 'http://localhost:11434';
+      }
+
+      const activeModelName = effectiveProvider === 'desktop' ? 'qwen2.5:14b' : MODEL_NAME;
+      console.log(`Relaying to [${targetHost}] using model [${activeModelName}]...`);
+      const response = await fetch(`${targetHost}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: activeModelName,
+          prompt: fullPrompt,
+          stream: false
+        })
+      });
+
+      if (!response.ok) throw new Error(`Target Host Error (${targetHost}): ${response.statusText}`);
+      const data = await response.json();
+      finalResponse = data.response;
+      metrics.providerStats.ollama++;
+    }
 
     // Track metrics
     const responseTime = Date.now() - startTime;
@@ -66,12 +137,18 @@ app.post('/chat', async (req, res) => {
     metrics.lastRequestAt = new Date().toISOString();
 
     res.json({
-      response: data.response,
-      memories_used: relevantMemories.length
+      response: finalResponse,
+      memories_used: relevantMemories.length,
+      provider: provider === 'gemini' && geminiModel ? 'gemini' : 'ollama',
+      model: provider === 'gemini' ? 'gemini-1.5-flash' : (provider === 'desktop' ? 'qwen2.5:14b' : MODEL_NAME)
     });
   } catch (error) {
     console.error('LLM Server Error:', error);
-    res.status(500).json({ error: error.message || 'Internal Server Error' });
+    metrics.providerStats.errors++;
+    res.status(500).json({
+      error: error.message || 'Internal Server Error',
+      fallback: provider === 'gemini' ? 'Gemini failed. Check API key.' : 'Ollama failed.'
+    });
   }
 });
 

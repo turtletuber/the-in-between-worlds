@@ -617,8 +617,10 @@ export default class FloUI {
             font-weight: bold;
             text-shadow: 0 0 5px #00ffff;
             pointer-events: none;
-            white-space: nowrap;
-            text-transform: uppercase;
+            white-space: normal;
+            max-width: 250px;
+            text-align: center;
+            overflow-wrap: break-word;
             letter-spacing: 1px;
             margin-top: -15px; /* Pull closer to Flo like radial label */
             animation: floTooltipIn 0.3s ease-out forwards;
@@ -628,7 +630,7 @@ export default class FloUI {
 
         // Initial position sync (prevent bottom-left flash)
         const bob = Math.sin(this.time * 0.003) * 3;
-        this.tooltip.style.left = `${this.position.x + 35}px`;
+        this.tooltip.style.left = `${this.position.x + 40}px`;
         this.tooltip.style.top = `${this.position.y + bob + 5}px`;
 
         document.body.appendChild(this.tooltip);
@@ -704,12 +706,12 @@ export default class FloUI {
 const style = document.createElement('style');
 style.textContent = `
     @keyframes floTooltipIn {
-        from { opacity: 0; transform: translate(-100%, -80%) scale(0.9); }
-        to { opacity: 1; transform: translate(-100%, -100%) scale(1); }
+        from { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+        to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
     }
     @keyframes floTooltipOut {
-        from { opacity: 1; transform: translate(-100%, -100%) scale(1); }
-        to { opacity: 0; transform: translate(-100%, -110%) scale(0.9); }
+        from { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+        to { opacity: 0; transform: translate(-50%, -110%) scale(0.9); }
     }
 `;
 document.head.appendChild(style);

@@ -5,6 +5,7 @@ export class AiService {
 
     // Configuration
     private mode: 'local' | 'cloud' = 'local';
+    private provider: 'raspi' | 'desktop' | 'gemini' = 'gemini'; // Default to Gemini for Demo
     private localLlmUrl: string = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
     private cloudLlmUrl: string = 'https://api.tomo-cloud.com/v1'; // Placeholder
     private vectorEndpoint: string = (import.meta as any).env.VITE_VECTOR_URL || 'http://localhost:5001/api';
@@ -14,6 +15,12 @@ export class AiService {
         const savedMode = localStorage.getItem('tomo-ai-mode');
         if (savedMode === 'local' || savedMode === 'cloud') {
             this.mode = savedMode;
+        }
+
+        // Load persisted provider
+        const savedProvider = localStorage.getItem('tomo-provider');
+        if (savedProvider === 'raspi' || savedProvider === 'desktop' || savedProvider === 'gemini') {
+            this.provider = savedProvider as any;
         }
 
         // Load persisted node URL
@@ -30,6 +37,16 @@ export class AiService {
     public setLocalUrl(url: string): void {
         this.localLlmUrl = url;
         localStorage.setItem('tomo-local-url', url);
+    }
+
+    public getProvider(): string {
+        return this.provider;
+    }
+
+    public setProvider(provider: 'raspi' | 'desktop' | 'gemini'): void {
+        this.provider = provider;
+        localStorage.setItem('tomo-provider', provider);
+        console.log(`[AiService] Provider switched to: ${provider}`);
     }
 
     public static getInstance(): AiService {
@@ -57,7 +74,7 @@ export class AiService {
 
     public async sendMessage(
         message: string,
-        history: { role: string, content: string }[], // Kept for interface compatibility, mostly unused by simple server
+        history: { role: string, content: string }[],
         onChunk: (chunk: string) => void
     ): Promise<string> {
         try {
@@ -66,15 +83,20 @@ export class AiService {
             const response = await fetch(`${this.llmEndpoint}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message })
+                body: JSON.stringify({
+                    message,
+                    provider: this.provider // Sends 'raspi', 'desktop', or 'gemini'
+                })
             });
 
             const data = await response.json();
             const fullText = data.response;
+            const activeModel = data.model || 'unknown';
 
-            // Report Latency
+            // Report Latency & Model
             const latency = Math.round(performance.now() - startTime);
-            window.dispatchEvent(new CustomEvent('ai-latency', { detail: { latency } }));
+            window.dispatchEvent(new CustomEvent('ai-latency', { detail: { latency, model: activeModel } }));
+            window.dispatchEvent(new CustomEvent('ai-model-active', { detail: { model: activeModel } }));
 
             // Simulate Streaming for UX
             // We split by words to make it feel "typed"
@@ -87,9 +109,9 @@ export class AiService {
 
             return fullText;
 
-        } catch (e) {
+        } catch (e: any) {
             console.error('AI Service Error:', e);
-            const errorMsg = "Synaptic Stream Unstable. Please ensure your local server is running and Cloudflare / local tunnel is active.";
+            const errorMsg = `Synaptic Stream Unstable (${e.message || 'Connection Refused'}). Endpoint: ${this.llmEndpoint}`;
             onChunk(`[ ${errorMsg} ]`);
             return errorMsg;
         }

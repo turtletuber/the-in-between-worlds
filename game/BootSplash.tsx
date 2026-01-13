@@ -308,15 +308,14 @@ export const BootSplash = ({ onComplete }: { onComplete: (skipped?: boolean) => 
 
                 {/* Scanlines overlay */}
                 <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] z-50 mix-blend-overlay opacity-50"></div>
-            </div>
 
-            {/* Skip Intro Button (Fixed to Viewport) */}
-            {/* Skip Intro Button (Fixed to Viewport) */}
-            <div
-                onClick={() => onComplete(true)}
-                className={`fixed bottom-12 right-12 font-mono text-xs text-cyan-500/40 hover:text-cyan-400 cursor-pointer transition-all duration-500 flex items-center gap-2 tracking-widest uppercase z-[200] ${showSkip ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            >
-                <span>[ SKIP_INTRO ]</span>
+                {/* Skip Intro Button (Relative to Container) */}
+                <div
+                    onClick={() => onComplete(true)}
+                    className={`absolute top-full left-0 mt-4 font-mono text-xs text-cyan-500/40 hover:text-cyan-400 cursor-pointer transition-all duration-500 flex items-center gap-2 tracking-widest uppercase z-[200] ${showSkip ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                >
+                    <span>[ SKIP_INTRO ]</span>
+                </div>
             </div>
         </div>
     );

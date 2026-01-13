@@ -4,6 +4,7 @@ import { initScene, disposeScene } from './game/scene';
 import { FloOverlay } from './components/FloOverlay';
 import { SidePanelOverlay } from './components/SidePanelOverlay';
 import { AdminPanel } from './components/AdminPanel';
+import { ConsoleLogPanel } from './components/ConsoleLogPanel';
 
 
 import { MetricsHUD } from './components/MetricsHUD';
@@ -18,17 +19,22 @@ import { BootSplash } from './game/BootSplash';
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // RAPID MODE CHECK
+  const urlParams = new URLSearchParams(window.location.search);
+  const isRapidMode = urlParams.get('mode') === 'rapid';
+
   const [currentWorld, setCurrentWorld] = useState('campground');
   const [whisper, setWhisper] = useState('˚ ༘♡ ⋆｡˚ where dreams are coded into being... ˚ ༘♡ ⋆｡˚');
-  const [fadeOpacity, setFadeOpacity] = useState(1);
-  const [showSplash, setShowSplash] = useState(true);
-  const [hasStarted, setHasStarted] = useState(false);
+  const [fadeOpacity, setFadeOpacity] = useState(isRapidMode ? 0 : 1);
+  const [showSplash, setShowSplash] = useState(isRapidMode ? false : true);
+  const [hasStarted, setHasStarted] = useState(isRapidMode ? true : false);
 
-  // Toggle HUD with 'h'
+  // Panels State
   const [showHud, setShowHud] = useState(true);
+  const [showConsole, setShowConsole] = useState(false);
 
-  // Responsive State: Mouse Parallax & Zoom Feedback
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  // Responsive State: Zoom Feedback
   const [zoomLevel, setZoomLevel] = useState(1);
 
   useEffect(() => {
@@ -56,20 +62,13 @@ export default function App() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'h') {
-        setShowHud(prev => !prev);
+      // Console Log: \
+      if (e.key === '\\') {
+        setShowConsole(prev => !prev);
       }
-    };
-    const handleMouseMove = (e: MouseEvent) => {
-      // Normalize to -1 to 1 range
-      setMousePos({
-        x: (e.clientX / window.innerWidth) * 2 - 1,
-        y: (e.clientY / window.innerHeight) * 2 - 1
-      });
     };
 
     window.addEventListener('keydown', handleKey);
-    window.addEventListener('mousemove', handleMouseMove);
 
     // Track Zoom Progress for HUD reactivity
     const zoomInterval = setInterval(() => {
@@ -80,7 +79,6 @@ export default function App() {
 
     return () => {
       window.removeEventListener('keydown', handleKey);
-      window.removeEventListener('mousemove', handleMouseMove);
       clearInterval(zoomInterval);
     };
   }, []);
@@ -98,6 +96,8 @@ export default function App() {
       if (!skipped) {
         window.dispatchEvent(new CustomEvent('tutorial-start'));
       }
+      // Always trigger the greeting after splash
+      window.dispatchEvent(new CustomEvent('trigger-greeting'));
     }, 1000);
   };
 
@@ -123,16 +123,17 @@ export default function App() {
           <FloOverlay />
           <SidePanelOverlay />
           <AdminPanel />
+          <ConsoleLogPanel isVisible={showConsole} onClose={() => setShowConsole(false)} />
           <MobileControls />
 
-          {/* HUD Layer with Mouse Parallax */}
+          {/* HUD Layer - Static for better accessibility */}
           <div
             className={`transition-opacity duration-500 ${showHud ? 'opacity-100' : 'opacity-0'}`}
             style={{
-              transform: `translate(${mousePos.x * 10}px, ${mousePos.y * 10}px)`,
-              transition: 'transform 0.2s ease-out, opacity 0.5s ease'
+              transition: 'opacity 0.5s ease'
             }}
           >
+            <MetricsHUD />
             <HintsDropdown />
             <HotkeyHelp />
           </div>
