@@ -3,7 +3,7 @@ import { AiService } from '../game/AiService';
 
 export const AdminPanel: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'prompt' | 'ram' | 'vector'>('prompt');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'prompt' | 'ram' | 'vector' | 'settings'>('dashboard');
     const [status, setStatus] = useState<string>('');
 
     // Prompt State
@@ -219,14 +219,14 @@ export const AdminPanel: React.FC = () => {
 
                 {/* Tabs */}
                 <div className="flex border-b border-neutral-800 bg-neutral-900">
-                    {['dashboard', 'prompt', 'ram', 'vector'].map(tab => (
+                    {['dashboard', 'prompt', 'ram', 'vector', 'settings'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`flex-1 py-3 text-center uppercase tracking-widest hover:bg-neutral-800 transition-colors ${activeTab === tab ? 'bg-neutral-800 text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500'
                                 }`}
                         >
-                            {tab === 'dashboard' ? 'Signals' : tab === 'prompt' ? 'Core Persona' : tab === 'ram' ? 'Synaptic Potentiation' : 'Lobe Memory (Disk)'}
+                            {tab === 'dashboard' ? 'Signals' : tab === 'prompt' ? 'Core Persona' : tab === 'ram' ? 'Synaptic Potentiation' : tab === 'vector' ? 'Lobe Memory (Disk)' : 'Deploy & Security'}
                         </button>
                     ))}
                 </div>
@@ -485,6 +485,148 @@ export const AdminPanel: React.FC = () => {
                                     >
                                         INGEST
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SETTINGS TAB */}
+                    {activeTab === 'settings' && (
+                        <div className="flex flex-col gap-6">
+                            {/* Security Status */}
+                            <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-4">
+                                <h3 className="text-white font-bold border-b border-neutral-700 pb-2">🔒 SECURITY STATUS</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 bg-neutral-900/50 rounded">
+                                        <div className="text-neutral-400 text-xs mb-1">API Authentication</div>
+                                        <div className="text-white font-bold">{import.meta.env.VITE_API_SECRET ? '✓ Enabled' : '⚠️  Not Set'}</div>
+                                        <div className="text-xs text-neutral-500 mt-1">
+                                            {import.meta.env.VITE_API_SECRET ? 'Protected with secret key' : 'Public access (dev only)'}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-neutral-900/50 rounded">
+                                        <div className="text-neutral-400 text-xs mb-1">Rate Limiting</div>
+                                        <div className="text-white font-bold">✓ Active</div>
+                                        <div className="text-xs text-neutral-500 mt-1">100 req/15min per IP</div>
+                                    </div>
+                                    <div className="p-3 bg-neutral-900/50 rounded">
+                                        <div className="text-neutral-400 text-xs mb-1">LLM Server</div>
+                                        <div className="text-white font-bold text-xs truncate">{import.meta.env.VITE_LLM_API_URL || 'localhost:3001'}</div>
+                                        <div className="text-xs text-neutral-500 mt-1">Hybrid: Local + Cloud fallback</div>
+                                    </div>
+                                    <div className="p-3 bg-neutral-900/50 rounded">
+                                        <div className="text-neutral-400 text-xs mb-1">Memory Persistence</div>
+                                        <div className="text-white font-bold">✓ File-based</div>
+                                        <div className="text-xs text-neutral-500 mt-1">Survives restarts</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Deployment Links */}
+                            <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-4">
+                                <h3 className="text-white font-bold border-b border-neutral-700 pb-2">🚀 DEPLOYMENT</h3>
+                                <div className="space-y-3">
+                                    <a
+                                        href="https://github.com/turtletuber/the-in-between-worlds"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 bg-neutral-900/50 hover:bg-neutral-900 border border-neutral-700 hover:border-cyan-500/50 rounded transition-all group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl">💻</div>
+                                            <div>
+                                                <div className="text-white font-bold group-hover:text-cyan-400 transition-colors">GitHub Repository</div>
+                                                <div className="text-xs text-neutral-500">Source code & version control</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-neutral-600 group-hover:text-cyan-400 transition-colors">→</div>
+                                    </a>
+
+                                    <a
+                                        href="https://vercel.com/dashboard"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 bg-neutral-900/50 hover:bg-neutral-900 border border-neutral-700 hover:border-cyan-500/50 rounded transition-all group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl">▲</div>
+                                            <div>
+                                                <div className="text-white font-bold group-hover:text-cyan-400 transition-colors">Vercel Dashboard</div>
+                                                <div className="text-xs text-neutral-500">Game deployment & env vars</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-neutral-600 group-hover:text-cyan-400 transition-colors">→</div>
+                                    </a>
+
+                                    <a
+                                        href="https://railway.app/dashboard"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 bg-neutral-900/50 hover:bg-neutral-900 border border-neutral-700 hover:border-purple-500/50 rounded transition-all group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl">🚂</div>
+                                            <div>
+                                                <div className="text-white font-bold group-hover:text-purple-400 transition-colors">Railway Dashboard</div>
+                                                <div className="text-xs text-neutral-500">LLM server deployment & env vars</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-neutral-600 group-hover:text-purple-400 transition-colors">→</div>
+                                    </a>
+
+                                    <a
+                                        href="https://replicate.com/account/api-tokens"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 bg-neutral-900/50 hover:bg-neutral-900 border border-neutral-700 hover:border-amber-500/50 rounded transition-all group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl">🔄</div>
+                                            <div>
+                                                <div className="text-white font-bold group-hover:text-amber-400 transition-colors">Replicate API</div>
+                                                <div className="text-xs text-neutral-500">Cloud AI fallback service</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-neutral-600 group-hover:text-amber-400 transition-colors">→</div>
+                                    </a>
+
+                                    <a
+                                        href={`${import.meta.env.VITE_LLM_API_URL || 'http://localhost:3001'}/admin.html`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-between p-3 bg-neutral-900/50 hover:bg-neutral-900 border border-neutral-700 hover:border-emerald-500/50 rounded transition-all group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl">🧠</div>
+                                            <div>
+                                                <div className="text-white font-bold group-hover:text-emerald-400 transition-colors">LLM Server Admin</div>
+                                                <div className="text-xs text-neutral-500">Direct server management</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-neutral-600 group-hover:text-emerald-400 transition-colors">→</div>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Setup Instructions */}
+                            <div className="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg space-y-3">
+                                <h3 className="text-white font-bold border-b border-neutral-700 pb-2">📋 QUICK SETUP</h3>
+                                <div className="text-sm text-neutral-300 space-y-2">
+                                    <div className="p-2 bg-black/30 rounded">
+                                        <div className="text-cyan-400 font-bold mb-1">1. Generate API Secret</div>
+                                        <code className="text-xs text-neutral-400">openssl rand -hex 32</code>
+                                    </div>
+                                    <div className="p-2 bg-black/30 rounded">
+                                        <div className="text-cyan-400 font-bold mb-1">2. Add to Vercel Environment</div>
+                                        <code className="text-xs text-neutral-400">VITE_API_SECRET=your_generated_key</code>
+                                    </div>
+                                    <div className="p-2 bg-black/30 rounded">
+                                        <div className="text-cyan-400 font-bold mb-1">3. Add to Railway Environment</div>
+                                        <code className="text-xs text-neutral-400">API_SECRET=your_generated_key</code>
+                                    </div>
+                                    <div className="text-xs text-neutral-500 italic">
+                                        ⚠️  Same key must be set in both places for auth to work
+                                    </div>
                                 </div>
                             </div>
                         </div>

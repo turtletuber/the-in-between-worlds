@@ -34,11 +34,17 @@ export const ChatPrompt: React.FC<{ visible: boolean; onClose: () => void }> = (
 
         // Use Railway URL in production, localhost in dev
         const apiUrl = import.meta.env.VITE_LLM_API_URL || 'http://localhost:3001';
+        const apiKey = import.meta.env.VITE_API_SECRET;
 
         try {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (apiKey) {
+                headers['x-api-key'] = apiKey;
+            }
+
             const res = await fetch(`${apiUrl}/chat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     message: message.trim(),
                     useSystemPrompt: true

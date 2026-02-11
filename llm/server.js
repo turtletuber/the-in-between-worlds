@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import rateLimit from 'express-rate-limit';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -13,6 +14,33 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // File-based memory persistence
 const MEMORIES_FILE = path.join(__dirname, 'memories.json');
+
+// Security: Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+app.use('/chat', limiter);
+app.use('/memories', limiter);
+
+// Security: API Key authentication
+const API_SECRET = process.env.API_SECRET;
+
+function requireAuth(req, res, next) {
+  // Skip auth in development if API_SECRET not set
+  if (!API_SECRET) {
+    console.warn('⚠️  API_SECRET not set. Running without auth (development only).');
+    return next();
+  }
+
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey || apiKey !== API_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' });
+  }
+  next();
+}
 
 // --- Configuration ---
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
@@ -141,7 +169,7 @@ async function callReplicate(prompt) {
   return result.output.join('');
 }
 
-app.post('/chat', async (req, res) => {
+app.post('/chat', requireAuth, async (req, res) => {
   const startTime = Date.now();
   const {
     message,
