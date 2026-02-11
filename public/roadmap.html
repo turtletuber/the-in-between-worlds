@@ -535,6 +535,9 @@
               <div class="tile dev" draggable="true" data-category="dev" data-id="22">
                 Multi-user / social features
               </div>
+              <div class="tile design" draggable="true" data-category="design" data-id="24">
+                Portrait gameboy mode
+              </div>
             </div>
           </div>
           <div class="column" data-column="measure">
@@ -653,7 +656,7 @@
 
   <script>
     const STORAGE_KEY = 'tomodachi_roadmap_state';
-    let nextId = 24; // Start after initial tiles
+    let nextId = 25; // Start after initial tiles
     let currentEditingTile = null;
     let draggedTile = null;
 
@@ -707,7 +710,7 @@
 
       document.querySelectorAll('.tile').forEach(tile => {
         const id = tile.dataset.id;
-        const isCustom = parseInt(id) >= 24;
+        const isCustom = parseInt(id) >= 25;
 
         const tileData = {
           id,
