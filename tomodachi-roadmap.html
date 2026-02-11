@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tomodachi — Iterative Timeline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .board-container {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .timeline-ruler {
+      width: 120px;
+      flex-shrink: 0;
+      background: white;
+      border-radius: 8px;
+      padding: 16px 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .month-mark {
+      padding: 8px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      border-bottom: 1px solid #eee;
+    }
+
+    .month-mark:last-child {
+      border-bottom: none;
+    }
+
+    .milestone {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .lanes-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .lane {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      min-height: 200px;
+    }
+
+    .lane-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .lane-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .lane-description {
+      font-size: 13px;
+      color: #666;
+      margin-left: auto;
+    }
+
+    .gate-lane {
+      border: 2px dashed #4caf50;
+    }
+
+    .gate-lane .lane-header {
+      border-bottom-color: #4caf50;
+    }
+
+    .success-criteria {
+      background: #f0f8f0;
+      border: 1px solid #4caf50;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .success-criteria h4 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #2e7d32;
+    }
+
+    .success-criteria ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .success-criteria li {
+      padding: 4px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .success-criteria li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #4caf50;
+      font-weight: bold;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .column {
+      min-height: 120px;
+    }
+
+    .column-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .tiles {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tile {
+      background: #fafafa;
+      border-left: 4px solid;
+      border-radius: 4px;
+      padding: 10px 12px;
+      cursor: grab;
+      font-size: 13px;
+      transition: box-shadow 0.2s;
+      position: relative;
+      resize: vertical;
+      overflow: auto;
+      min-height: 40px;
+    }
+
+    .tile:hover {
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .tile.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+
+    .tile.dev { border-left-color: #2196f3; }
+    .tile.uxr { border-left-color: #ff9800; }
+    .tile.design { border-left-color: #9c27b0; }
+    .tile.strategy { border-left-color: #f44336; }
+    .tile.qa { border-left-color: #4caf50; }
+
+    .fab-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .fab {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #2196f3;
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+    }
+
+    .fab.secondary {
+      background: #555;
+      font-size: 14px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 16px;
+      font-size: 18px;
+    }
+
+    .modal-content label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .modal-content input,
+    .modal-content textarea,
+    .modal-content select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .modal-content textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      background: #2196f3;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #f44336;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #eee;
+      color: #333;
+    }
+
+    .legend {
+      margin-top: 24px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .legend h4 {
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .legend-items {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 12px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tomodachi — Orchestration Layer for Personal AI</h1>
+  <p class="subtitle">The game is the interface. The model is infrastructure. Iterative delivery toward End of April Demo.</p>
+
+  <div class="board-container">
+    <div class="timeline-ruler">
+      <div class="month-mark">
+        Feb 2026
+        <div class="milestone">Current sprint</div>
+      </div>
+      <div class="month-mark">
+        Mar 2026
+        <div class="milestone">Build window</div>
+      </div>
+      <div class="month-mark">
+        Apr 2026
+        <div class="milestone">Demo target</div>
+      </div>
+      <div class="month-mark">
+        May 2026+
+        <div class="milestone">Post-demo</div>
+      </div>
+    </div>
+
+    <div class="lanes-container">
+      <!-- NOW LANE -->
+      <div class="lane" data-lane="now">
+        <div class="lane-header">
+          <span class="lane-title">NOW</span>
+          <span class="lane-description">Stabilize, decide, groom</span>
+        </div>
+        <div class="columns">
+          <div class="column" data-column="understand">
+            <div class="column-label">Understand</div>
+            <div class="tiles">
+              <div class="tile strategy" draggable="true" data-category="strategy" data-id="1">
+                Define demo scope: what to show
+              </div>
+              <div class="tile uxr" draggable="true" data-category="uxr" data-id="2">
+                Core interaction loop spec
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="engineering">
+            <div class="column-label">Engineering</div>
+            <div class="tiles">
+              <div class="tile dev" draggable="true" data-category="dev" data-id="3">
+                Test LLM server integration
+              </div>
+              <div class="tile dev" draggable="true" data-category="dev" data-id="4">
+                Stabilize Vercel deployment
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="decisions">
+            <div class="column-label">Decisions</div>
+            <div class="tiles">
+              <div class="tile strategy" draggable="true" data-category="strategy" data-id="5">
+                ESP32 in demo? Y/N gate
+              </div>
+              <div class="tile strategy" draggable="true" data-category="strategy" data-id="6">
+                Model choice: local vs cloud hybrid
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEXT LANE -->
+      <div class="lane" data-lane="next">
+        <div class="lane-header">
+          <span class="lane-title">NEXT</span>
+          <span class="lane-description">Ship core fixes and improvements</span>
+        </div>
+        <div class="columns">
+          <div class="column" data-column="ship">
+            <div class="column-label">Ship</div>
+            <div class="tiles">
+              <div class="tile dev" draggable="true" data-category="dev" data-id="7">
+                Wire LLM chat into game UI
+              </div>
+              <div class="tile dev" draggable="true" data-category="dev" data-id="8">
+                Context persistence (memory system)
+              </div>
+              <div class="tile design" draggable="true" data-category="design" data-id="9">
+                AI response visual feedback
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="prototype">
+            <div class="column-label">Prototype</div>
+            <div class="tiles">
+              <div class="tile dev" draggable="true" data-category="dev" data-id="10">
+                ESP32 basic comms test (if included)
+              </div>
+              <div class="tile uxr" draggable="true" data-category="uxr" data-id="11">
+                Task completion reward loop concept
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="relationships">
+            <div class="column-label">Relationships</div>
+            <div class="tiles">
+              <div class="tile uxr" draggable="true" data-category="uxr" data-id="12">
+                Early user testing sessions
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APRIL DEMO GATE -->
+      <div class="lane gate-lane" data-lane="demo">
+        <div class="lane-header">
+          <span class="lane-title">APRIL DEMO</span>
+          <span class="lane-description">Go/No-Go Gate</span>
+        </div>
+
+        <div class="success-criteria">
+          <h4>Success Criteria — Must be true before expanding scope:</h4>
+          <ul>
+            <li>AI responds meaningfully to player actions in-game</li>
+            <li>Context persists across sessions (memory works)</li>
+            <li>Clear progression loop visible to observer</li>
+            <li>Runs smoothly on Vercel (no crashes, acceptable latency)</li>
+            <li>Demo tells coherent story about orchestration layer vision</li>
+          </ul>
+        </div>
+
+        <div class="columns">
+          <div class="column" data-column="deliver">
+            <div class="column-label">Deliver</div>
+            <div class="tiles">
+              <div class="tile dev" draggable="true" data-category="dev" data-id="13">
+                Demo-ready build on Vercel
+              </div>
+              <div class="tile qa" draggable="true" data-category="qa" data-id="14">
+                End-to-end flow tested
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="show">
+            <div class="column-label">Show</div>
+            <div class="tiles">
+              <div class="tile design" draggable="true" data-category="design" data-id="15">
+                Demo narrative / walkthrough script
+              </div>
+              <div class="tile strategy" draggable="true" data-category="strategy" data-id="16">
+                Recording / documentation
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="measure">
+            <div class="column-label">Measure</div>
+            <div class="tiles">
+              <div class="tile uxr" draggable="true" data-category="uxr" data-id="17">
+                Gather feedback from demo audience
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LATER LANE -->
+      <div class="lane" data-lane="later">
+        <div class="lane-header">
+          <span class="lane-title">LATER</span>
+          <span class="lane-description">Expansion — unlocks if demo data supports it</span>
+        </div>
+        <div class="columns">
+          <div class="column" data-column="expand">
+            <div class="column-label">Expand</div>
+            <div class="tiles">
+              <div class="tile dev" draggable="true" data-category="dev" data-id="18">
+                Full ESP32 hardware integration
+              </div>
+              <div class="tile dev" draggable="true" data-category="dev" data-id="19">
+                Raspberry Pi local deployment
+              </div>
+              <div class="tile design" draggable="true" data-category="design" data-id="20">
+                Richer progression mechanics
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="explore">
+            <div class="column-label">Explore</div>
+            <div class="tiles">
+              <div class="tile strategy" draggable="true" data-category="strategy" data-id="21">
+                Moltbook integration research
+              </div>
+              <div class="tile dev" draggable="true" data-category="dev" data-id="22">
+                Multi-user / social features
+              </div>
+            </div>
+          </div>
+          <div class="column" data-column="measure">
+            <div class="column-label">Measure</div>
+            <div class="tiles">
+              <div class="tile uxr" draggable="true" data-category="uxr" data-id="23">
+                Usage analytics & retention tracking
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h4>Category Legend</h4>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #2196f3;"></div>
+        <span>Dev</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #ff9800;"></div>
+        <span>UXR</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #9c27b0;"></div>
+        <span>Design</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #f44336;"></div>
+        <span>Strategy</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #4caf50;"></div>
+        <span>QA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab-container">
+    <button class="fab" id="addTileBtn" title="Add Tile">+</button>
+    <button class="fab secondary" id="downloadBtn" title="Download State">↓</button>
+    <button class="fab secondary" id="loadBtn" title="Load State">↑</button>
+  </div>
+
+  <!-- Edit Tile Modal -->
+  <div class="modal" id="editModal">
+    <div class="modal-content">
+      <h3>Edit Tile</h3>
+      <label>
+        Tile Name
+        <input type="text" id="editTileName">
+      </label>
+      <label>
+        Start Date
+        <input type="date" id="editStartDate">
+      </label>
+      <label>
+        End Date
+        <input type="date" id="editEndDate">
+      </label>
+      <label>
+        Notes
+        <textarea id="editNotes"></textarea>
+      </label>
+      <div class="modal-buttons">
+        <button class="btn btn-danger" id="deleteTileBtn">Delete</button>
+        <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveEditBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Tile Modal -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <h3>Add Tile</h3>
+      <label>
+        Tile Name
+        <input type="text" id="addTileName">
+      </label>
+      <label>
+        Category
+        <select id="addCategory">
+          <option value="dev">Dev</option>
+          <option value="uxr">UXR</option>
+          <option value="design">Design</option>
+          <option value="strategy">Strategy</option>
+          <option value="qa">QA</option>
+        </select>
+      </label>
+      <label>
+        Lane
+        <select id="addLane">
+          <option value="now">NOW</option>
+          <option value="next">NEXT</option>
+          <option value="demo">APRIL DEMO</option>
+          <option value="later">LATER</option>
+        </select>
+      </label>
+      <label>
+        Column (0-2)
+        <input type="number" id="addColumn" min="0" max="2" value="0">
+      </label>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveAddBtn">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for load -->
+  <input type="file" id="fileInput" accept=".json" style="display: none;">
+
+  <script>
+    const STORAGE_KEY = 'tomodachi_roadmap_state';
+    let nextId = 24; // Start after initial tiles
+    let currentEditingTile = null;
+    let draggedTile = null;
+
+    // Load state from localStorage
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const state = JSON.parse(saved);
+        nextId = state.nextId || nextId;
+
+        // Restore tiles
+        document.querySelectorAll('.tile').forEach(tile => {
+          const id = tile.dataset.id;
+          const tileState = state.tiles?.[id];
+          if (tileState) {
+            tile.textContent = tileState.name;
+            tile.dataset.startDate = tileState.startDate || '';
+            tile.dataset.endDate = tileState.endDate || '';
+            tile.dataset.notes = tileState.notes || '';
+            if (tileState.height) {
+              tile.style.height = tileState.height;
+            }
+          }
+        });
+
+        // Remove deleted tiles
+        if (state.deletedTiles) {
+          state.deletedTiles.forEach(id => {
+            const tile = document.querySelector(`[data-id="${id}"]`);
+            if (tile) tile.remove();
+          });
+        }
+
+        // Add custom tiles
+        if (state.customTiles) {
+          state.customTiles.forEach(tileData => {
+            createTile(tileData);
+          });
+        }
+      }
+    }
+
+    // Save state to localStorage
+    function saveState() {
+      const state = {
+        nextId,
+        tiles: {},
+        deletedTiles: [],
+        customTiles: []
+      };
+
+      document.querySelectorAll('.tile').forEach(tile => {
+        const id = tile.dataset.id;
+        const isCustom = parseInt(id) >= 24;
+
+        const tileData = {
+          id,
+          name: tile.textContent,
+          category: tile.dataset.category,
+          startDate: tile.dataset.startDate || '',
+          endDate: tile.dataset.endDate || '',
+          notes: tile.dataset.notes || '',
+          height: tile.style.height || '',
+          lane: tile.closest('.lane').dataset.lane,
+          columnIndex: Array.from(tile.closest('.column').parentElement.children).indexOf(tile.closest('.column'))
+        };
+
+        state.tiles[id] = tileData;
+
+        if (isCustom) {
+          state.customTiles.push(tileData);
+        }
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // Create a new tile
+    function createTile(data) {
+      const lane = document.querySelector(`[data-lane="${data.lane}"]`);
+      if (!lane) return;
+
+      const columns = lane.querySelectorAll('.column');
+      const column = columns[data.columnIndex] || columns[0];
+      const tilesContainer = column.querySelector('.tiles');
+
+      const tile = document.createElement('div');
+      tile.className = `tile ${data.category}`;
+      tile.draggable = true;
+      tile.dataset.category = data.category;
+      tile.dataset.id = data.id;
+      tile.dataset.startDate = data.startDate || '';
+      tile.dataset.endDate = data.endDate || '';
+      tile.dataset.notes = data.notes || '';
+      tile.textContent = data.name;
+      if (data.height) {
+        tile.style.height = data.height;
+      }
+
+      setupTileListeners(tile);
+      tilesContainer.appendChild(tile);
+    }
+
+    // Setup listeners for a tile
+    function setupTileListeners(tile) {
+      tile.addEventListener('click', () => {
+        currentEditingTile = tile;
+        document.getElementById('editTileName').value = tile.textContent;
+        document.getElementById('editStartDate').value = tile.dataset.startDate || '';
+        document.getElementById('editEndDate').value = tile.dataset.endDate || '';
+        document.getElementById('editNotes').value = tile.dataset.notes || '';
+        document.getElementById('editModal').classList.add('active');
+      });
+
+      tile.addEventListener('dragstart', (e) => {
+        draggedTile = tile;
+        tile.classList.add('dragging');
+      });
+
+      tile.addEventListener('dragend', () => {
+        tile.classList.remove('dragging');
+        draggedTile = null;
+      });
+    }
+
+    // Setup all initial tiles
+    document.querySelectorAll('.tile').forEach(setupTileListeners);
+
+    // Drag and drop
+    document.querySelectorAll('.tiles').forEach(container => {
+      container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(container, e.clientY);
+        if (afterElement == null) {
+          container.appendChild(draggedTile);
+        } else {
+          container.insertBefore(draggedTile, afterElement);
+        }
+      });
+
+      container.addEventListener('drop', () => {
+        saveState();
+      });
+    });
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.tile:not(.dragging)')];
+
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // Edit modal
+    document.getElementById('saveEditBtn').addEventListener('click', () => {
+      if (currentEditingTile) {
+        currentEditingTile.textContent = document.getElementById('editTileName').value;
+        currentEditingTile.dataset.startDate = document.getElementById('editStartDate').value;
+        currentEditingTile.dataset.endDate = document.getElementById('editEndDate').value;
+        currentEditingTile.dataset.notes = document.getElementById('editNotes').value;
+        saveState();
+      }
+      document.getElementById('editModal').classList.remove('active');
+    });
+
+    document.getElementById('cancelEditBtn').addEventListener('click', () => {
+      document.getElementById('editModal').classList.remove('active');
+    });
+
+    document.getElementById('deleteTileBtn').addEventListener('click', () => {
+      if (currentEditingTile && confirm('Delete this tile?')) {
+        currentEditingTile.remove();
+        saveState();
+        document.getElementById('editModal').classList.remove('active');
+      }
+    });
+
+    // Add modal
+    document.getElementById('addTileBtn').addEventListener('click', () => {
+      document.getElementById('addModal').classList.add('active');
+      document.getElementById('addTileName').value = '';
+    });
+
+    document.getElementById('saveAddBtn').addEventListener('click', () => {
+      const name = document.getElementById('addTileName').value.trim();
+      if (!name) return;
+
+      const data = {
+        id: String(nextId++),
+        name,
+        category: document.getElementById('addCategory').value,
+        lane: document.getElementById('addLane').value,
+        columnIndex: parseInt(document.getElementById('addColumn').value)
+      };
+
+      createTile(data);
+      saveState();
+      document.getElementById('addModal').classList.remove('active');
+    });
+
+    document.getElementById('cancelAddBtn').addEventListener('click', () => {
+      document.getElementById('addModal').classList.remove('active');
+    });
+
+    // Download state
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const state = localStorage.getItem(STORAGE_KEY);
+      if (!state) {
+        alert('No state to download');
+        return;
+      }
+
+      const blob = new Blob([state], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tomodachi-roadmap-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Load state from file
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const state = e.target.result;
+          localStorage.setItem(STORAGE_KEY, state);
+          location.reload();
+        } catch (err) {
+          alert('Error loading file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Close modals on background click
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    });
+
+    // Load initial state
+    loadState();
+
+    // Save state periodically
+    setInterval(saveState, 5000);
+  </script>
+</body>
+</html>

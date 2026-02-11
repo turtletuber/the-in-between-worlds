@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { keys } from '../game/Player';
+import { ChatPrompt } from './ChatPrompt';
 
 export const MobileControls: React.FC = () => {
     const [isMobile, setIsMobile] = useState(false);
     const joystickRef = useRef<HTMLDivElement>(null);
     const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
     const lastPinchDist = useRef<number | null>(null);
+    const [chatVisible, setChatVisible] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     useEffect(() => {
         const checkMobile = () => {
@@ -14,6 +17,50 @@ export const MobileControls: React.FC = () => {
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
+
+        // Keyboard listeners for desktop
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't trigger if user is typing in an input or textarea
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            switch (e.key.toLowerCase()) {
+                case 'i':
+                    e.preventDefault();
+                    setChatVisible(prev => !prev);
+                    break;
+                case 'j':
+                    e.preventDefault();
+                    setShowSettings(prev => !prev);
+                    break;
+                case 'k':
+                    e.preventDefault();
+                    keys.space = true;
+                    window.dispatchEvent(new CustomEvent('confirm-action'));
+                    break;
+                case 'l':
+                    e.preventDefault();
+                    if ((window as any).radialMenu) {
+                        (window as any).radialMenu.collapse();
+                    }
+                    window.dispatchEvent(new CustomEvent('close-side-panel'));
+                    window.dispatchEvent(new CustomEvent('close-admin-panel-mobile'));
+                    setChatVisible(false);
+                    setShowSettings(false);
+                    break;
+            }
+        };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'k') {
+                keys.space = false;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
 
         // Pinch to Zoom Logic
         const handleTouchStart = (e: TouchEvent) => {
@@ -78,10 +125,10 @@ export const MobileControls: React.FC = () => {
             window.removeEventListener('touchstart', handleTouchStart);
             window.removeEventListener('touchmove', handleTouchMove);
             window.removeEventListener('touchend', handleTouchEnd);
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
         };
     }, []);
-
-    if (!isMobile) return null;
 
     const handleJoystickStart = (e: React.TouchEvent) => {
         handleJoystickMove(e);
@@ -126,32 +173,56 @@ export const MobileControls: React.FC = () => {
         <div className="fixed inset-0 pointer-events-none z-[200] flex flex-col justify-end p-12">
 
             <div className="flex justify-between items-end w-full">
-                {/* Minimal Joystick */}
-                <div
-                    ref={joystickRef}
-                    className="w-32 h-32 flex items-center justify-center relative touch-none pointer-events-auto"
-                    onTouchStart={handleJoystickStart}
-                    onTouchMove={handleJoystickMove}
-                    onTouchEnd={handleJoystickEnd}
-                >
-                    {/* Subtler Guideline */}
-                    <div className="w-24 h-24 rounded-full border border-white/5 opacity-20" />
+                {/* Minimal Joystick with WASD indicators */}
+                <div className="relative">
+                    {isMobile && (
+                        <div
+                            ref={joystickRef}
+                            className="w-32 h-32 flex items-center justify-center relative touch-none pointer-events-auto"
+                            onTouchStart={handleJoystickStart}
+                            onTouchMove={handleJoystickMove}
+                            onTouchEnd={handleJoystickEnd}
+                        >
+                            {/* Subtler Guideline */}
+                            <div className="w-24 h-24 rounded-full border border-white/5 opacity-20" />
 
-                    {/* The Knob */}
-                    <div
-                        className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-transform duration-75 flex items-center justify-center absolute"
-                        style={{ transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)` }}
-                    >
-                        <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10" />
+                            {/* The Knob */}
+                            <div
+                                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)] transition-transform duration-75 flex items-center justify-center absolute"
+                                style={{ transform: `translate(${joystickPos.x}px, ${joystickPos.y}px)` }}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* WASD Indicators */}
+                    <div className={`flex justify-center gap-2 text-sm text-white/30 font-mono pointer-events-none ${isMobile ? 'absolute -bottom-6 left-0 right-0' : 'mb-4'}`}>
+                        <span className={`transition-colors ${keys.w ? 'text-white font-bold' : ''}`}>W</span>
+                        <span className={`transition-colors ${keys.a ? 'text-white font-bold' : ''}`}>A</span>
+                        <span className={`transition-colors ${keys.s ? 'text-white font-bold' : ''}`}>S</span>
+                        <span className={`transition-colors ${keys.d ? 'text-white font-bold' : ''}`}>D</span>
                     </div>
                 </div>
 
-                {/* N64 Style Action Buttons */}
+                {/* Action Buttons - Cross Layout */}
                 <div className="flex flex-col items-center gap-4 pointer-events-auto pr-4">
-                    <div className="relative w-32 h-32">
-                        {/* Button B (Top Left-ish) - Back / Exit / No */}
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                        {/* Button I (Y) - North - Chat / Tomo */}
                         <div
-                            className="absolute top-2 left-2 w-14 h-14 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90 opacity-80"
+                            className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-[#fbbf24] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            onTouchStart={() => {
+                                setChatVisible(!chatVisible);
+                            }}
+                            style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
+                        >
+                            <span className="text-white font-black italic text-xl drop-shadow-md">Y</span>
+                        </div>
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-white/40 font-mono">I</div>
+
+                        {/* Button L (B) - East - Back / Exit / No */}
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 right-0 w-14 h-14 rounded-full bg-[#1db954] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90 opacity-80"
                             onTouchStart={() => {
                                 // 1. Close Flo Radial Menu
                                 if ((window as any).radialMenu) {
@@ -160,16 +231,20 @@ export const MobileControls: React.FC = () => {
                                 // 2. Close Side Panel (Chat etc)
                                 window.dispatchEvent(new CustomEvent('close-side-panel'));
                                 // 3. Close Admin Panel
-                                window.dispatchEvent(new CustomEvent('close-admin-panel-mobile')); // We'll add a listener for this
+                                window.dispatchEvent(new CustomEvent('close-admin-panel-mobile'));
+                                // 4. Close Chat
+                                setChatVisible(false);
+                                setShowSettings(false);
                             }}
                             style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)' }}
                         >
                             <span className="text-white font-black italic text-xl drop-shadow-md">B</span>
                         </div>
+                        <div className="absolute top-1/2 -translate-y-1/2 -right-5 text-[10px] text-white/40 font-mono">L</div>
 
-                        {/* Button A (Bottom Right-ish) - OK / Forward / Jump */}
+                        {/* Button K (A) - South - OK / Forward / Jump */}
                         <div
-                            className="absolute bottom-2 right-2 w-14 h-14 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-[#3b82f6] border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
                             onTouchStart={() => {
                                 keys.space = true;
                                 // Can also be used to confirm dialogues or move forward in tutorials
@@ -180,9 +255,54 @@ export const MobileControls: React.FC = () => {
                         >
                             <span className="text-white font-black italic text-xl drop-shadow-md">A</span>
                         </div>
+                        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-white/40 font-mono">K</div>
+
+                        {/* Button J - West - Settings / Menu - Circle with Square Icon */}
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 left-0 w-14 h-14 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 border-b-4 border-black/40 shadow-lg flex items-center justify-center active:translate-y-1 active:border-b-0 transition-all active:brightness-90"
+                            onTouchStart={() => {
+                                setShowSettings(!showSettings);
+                            }}
+                            style={{ boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.2)' }}
+                        >
+                            <div className="w-6 h-6 border-2 border-purple-400" style={{ borderRadius: 0 }} />
+                        </div>
+                        <div className="absolute top-1/2 -translate-y-1/2 -left-5 text-[10px] text-white/40 font-mono">J</div>
                     </div>
                 </div>
             </div>
+
+            {/* Settings Panel */}
+            {showSettings && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center pointer-events-none">
+                    <div className="w-full max-w-md px-4 pointer-events-auto">
+                        <div className="p-6 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/30 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-white font-bold text-lg">Settings</h3>
+                                <button
+                                    onClick={() => setShowSettings(false)}
+                                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                                >
+                                    <span className="text-white text-lg">×</span>
+                                </button>
+                            </div>
+                            <div className="text-white/60 text-sm">
+                                <p className="mb-2">Controls:</p>
+                                <ul className="text-xs space-y-1 font-mono">
+                                    <li>WASD - Move</li>
+                                    <li>I - Open Chat (Y button)</li>
+                                    <li>J - Settings (Purple square)</li>
+                                    <li>K - Confirm/Jump (A button)</li>
+                                    <li>L - Back/Exit (B button)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Chat Prompt */}
+            <ChatPrompt visible={chatVisible} onClose={() => setChatVisible(false)} />
 
             <style dangerouslySetInnerHTML={{
                 __html: `

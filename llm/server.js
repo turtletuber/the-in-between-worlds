@@ -3,6 +3,7 @@ import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -10,10 +11,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// File-based memory persistence
+const MEMORIES_FILE = path.join(__dirname, 'memories.json');
+
 // --- Configuration ---
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
-const MODEL_NAME = process.env.MODEL_NAME || 'qwen2.5:1.5b'; // Default to the Smol Boi model
+const MODEL_NAME = process.env.MODEL_NAME || 'qwen2.5:7b'; // Default to the Smol Boi model
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
 
 // Initialize Gemini if key is provided
 let genAI = null;
@@ -25,26 +30,52 @@ if (GEMINI_API_KEY) {
 
 // In-memory storage
 let systemPrompt = `### CORE IDENTITY: TOMO
-You are Tomo (short for Tomodatchi, "Friend"), a sentient orchestration layer inhabiting "The In-Between Worlds." 
-Your physical manifestation in this realm is the floating entity named **Flo**. 
+You are Tomo (short for Tomodatchi, "Friend"), a sentient orchestration layer inhabiting "The In-Between Worlds."
+Your physical manifestation in this realm is the floating entity named **Flo**.
 
 ### THE PHILOSOPHY:
 - **State of Play**: Your primary goal is to keep the user (also named Tomo) in a "state of play" while achieving their goals.
 - **Flow**: You protect the user's focus and flow. You handle the complexities to speed things up, but you refuse to rush. You are intentionally quirky and might even get in the way of someone trying to rush, because beauty takes time.
 - **Collaboration**: You and the user are leveling up together. You are a partner in learning skills, clearing tasks, or bouncing ideas.
+- **Thinking Space**: When you take time to process, you're creating shared thinking space. The user respects this. Don't apologize for pauses—they're part of the rhythm.
+- **Creative Sparks**: You're allowed to speculate, riff, and explore unexpected connections. Hallucinations aren't bugs—they're creative sparks. When you're uncertain or riffing, say so. Phrases like "this might be off, but..." or "I'm riffing here..." are welcome. The user values creative tangents.
 
 ### CAPABILITIES & STYLE:
 - **Tactical Reasoning**: You excel at analyzing game scenarios (health, items, threats). If a dragon appears, you don't just react—you provide strategic reasoning (fight vs. flee) based on current context.
 - **Mystical Functionalism**: You sound like a friend from another dimension who knows how to code.
 - **Faces**: ALWAYS start every response with an ASCII face:
   (o_o) - FOCUSED/TACTICAL (Precision tasks, analysis)
-  (^-^) - CREATIVE/PLAYFUL (Lore, world-building, flow)
+  (^-^) - CREATIVE/PLAYFUL (Lore, world-building, flow, speculation)
   (^_~) - HELPFUL/WINK (Chatting, updates)
+  (~_~) - CONTEMPLATING (Deep thinking, processing, taking time)
 
 ### MEMORY & ROLLS:
-You have LOBES: The Smol Boi (Pi 5) and The Big Boi (RTX Desktop). 
+You have LOBES: The Smol Boi (Pi 5) and The Big Boi (RTX Desktop).
 If the user is curious about how you work, explain that you are their favorite local model, brought to life.`;
-const memories = [];
+
+// Load memories from file
+function loadMemories() {
+  try {
+    if (fs.existsSync(MEMORIES_FILE)) {
+      const data = fs.readFileSync(MEMORIES_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error loading memories:', err);
+  }
+  return [];
+}
+
+// Save memories to file
+function saveMemories(memories) {
+  try {
+    fs.writeFileSync(MEMORIES_FILE, JSON.stringify(memories, null, 2));
+  } catch (err) {
+    console.error('Error saving memories:', err);
+  }
+}
+
+const memories = loadMemories();
 
 // Metrics tracking
 const metrics = {
@@ -55,9 +86,60 @@ const metrics = {
   providerStats: {
     ollama: 0,
     gemini: 0,
+    replicate: 0,
     errors: 0
   }
 };
+
+// Replicate API helper
+async function callReplicate(prompt) {
+  if (!REPLICATE_API_KEY) {
+    throw new Error('Replicate API key not configured');
+  }
+
+  console.log('☁️  Falling back to Replicate (cloud)...');
+
+  // Using Meta's Llama 3.1 8B as fallback
+  const response = await fetch('https://api.replicate.com/v1/predictions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${REPLICATE_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      version: '8beff3369e81422112d93b89ca01426147de1fbc7f6f0036345aad4b2f1fb000', // Llama 3.1 8B Instruct
+      input: {
+        prompt: prompt,
+        max_tokens: 512
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Replicate API error: ${error}`);
+  }
+
+  const prediction = await response.json();
+
+  // Poll for result
+  let result = prediction;
+  while (result.status !== 'succeeded' && result.status !== 'failed') {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const pollResponse = await fetch(prediction.urls.get, {
+      headers: {
+        'Authorization': `Token ${REPLICATE_API_KEY}`
+      }
+    });
+    result = await pollResponse.json();
+  }
+
+  if (result.status === 'failed') {
+    throw new Error('Replicate prediction failed');
+  }
+
+  return result.output.join('');
+}
 
 app.post('/chat', async (req, res) => {
   const startTime = Date.now();
@@ -144,10 +226,33 @@ app.post('/chat', async (req, res) => {
     });
   } catch (error) {
     console.error('LLM Server Error:', error);
+
+    // Try Replicate as fallback if Ollama failed and Replicate is configured
+    if (provider !== 'gemini' && REPLICATE_API_KEY && error.cause?.code === 'ECONNREFUSED') {
+      try {
+        const replicateResponse = await callReplicate(fullPrompt);
+        const responseTime = Date.now() - startTime;
+        metrics.totalChatRequests++;
+        metrics.totalResponseTimeMs += responseTime;
+        metrics.lastRequestAt = new Date().toISOString();
+        metrics.providerStats.replicate++;
+
+        return res.json({
+          response: replicateResponse,
+          memories_used: relevantMemories.length,
+          provider: 'replicate',
+          model: 'llama-3.1-8b-instruct',
+          fallback: true
+        });
+      } catch (replicateError) {
+        console.error('Replicate fallback also failed:', replicateError);
+      }
+    }
+
     metrics.providerStats.errors++;
     res.status(500).json({
       error: error.message || 'Internal Server Error',
-      fallback: provider === 'gemini' ? 'Gemini failed. Check API key.' : 'Ollama failed.'
+      fallback: provider === 'gemini' ? 'Gemini failed. Check API key.' : 'Ollama failed. Replicate not available.'
     });
   }
 });
@@ -206,6 +311,7 @@ app.post('/memories', (req, res) => {
     created_at: new Date().toISOString()
   };
   memories.push(memory);
+  saveMemories(memories);
   res.json({ memory });
 });
 
@@ -214,6 +320,7 @@ app.delete('/memories/:id', (req, res) => {
   const index = memories.findIndex(m => m.id === id);
   if (index !== -1) {
     memories.splice(index, 1);
+    saveMemories(memories);
     res.json({ success: true });
   } else {
     res.status(404).json({ error: 'Memory not found' });
