@@ -6,12 +6,10 @@ export const AmbientAudio: React.FC = () => {
     const FADE_DURATION = 5.0; // Seconds of fade in/out
 
     useEffect(() => {
-        // Attempt play on mount (browsers might block autoplay)
+        // Audio is now off by default per user request. 
+        // We will not attempt to play on mount.
         if (audioRef.current) {
             audioRef.current.volume = 0;
-            audioRef.current.play()
-                .then(() => setIsPlaying(true))
-                .catch(e => console.log("Audio autoplay blocked:", e));
         }
     }, []);
 
@@ -54,7 +52,7 @@ export const AmbientAudio: React.FC = () => {
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-50 pointer-events-auto">
+        <div className="fixed bottom-6 right-6 z-[200] pointer-events-auto">
             <audio
                 ref={audioRef}
                 src="/soft-syth-rain.m4a"

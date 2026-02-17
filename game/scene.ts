@@ -174,7 +174,7 @@ function animate() {
     const delta = clock.getDelta();
     const time = clock.getElapsedTime();
 
-    updatePlayerMovement(scene, camera, controls, currentZoom, delta, time, worldElements);
+    updatePlayerMovement(scene, camera, controls, currentZoom, delta, time, worldElements, currentWorld);
     updateZoom(delta);
 
     if (cosmicHub) cosmicHub.update(delta);

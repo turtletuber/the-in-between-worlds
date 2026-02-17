@@ -38,6 +38,7 @@ export function setupInputHandlers(context: InputContext) {
         if (key === 's') playerKeys.s = true;
         if (key === 'd') playerKeys.d = true;
         if (key === ' ') playerKeys.space = true;
+        if (key === 'l') playerKeys.down = true;
 
         // Mech Arm / Chat: [
         if (key === '[') {
@@ -49,8 +50,8 @@ export function setupInputHandlers(context: InputContext) {
             window.dispatchEvent(new CustomEvent('toggle-admin-panel'));
         }
 
-        // Performance Toggle
-        if (key === 'l') {
+        // Performance Toggle: P
+        if (key === 'p') {
             const isLow = context.renderer.shadowMap.enabled === true;
             console.log(`Toggling Performance Mode: ${isLow ? 'Low Power' : 'High Quality'}`);
 
@@ -84,6 +85,7 @@ export function setupInputHandlers(context: InputContext) {
         if (key === 's') playerKeys.s = false;
         if (key === 'd') playerKeys.d = false;
         if (key === ' ') playerKeys.space = false;
+        if (key === 'l') playerKeys.down = false;
     };
 
     const onWheel = (e: WheelEvent) => {

@@ -32,9 +32,43 @@ export const ChatPrompt: React.FC<{ visible: boolean; onClose: () => void }> = (
         setSending(true);
         setResponse('');
 
-        // Use Railway URL in production, localhost in dev
-        const apiUrl = import.meta.env.VITE_LLM_API_URL || 'http://localhost:3001';
-        const apiKey = import.meta.env.VITE_API_SECRET;
+        // 1. Direct Gemini Call (if API key provided in .env)
+        const geminiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+        if (geminiKey && geminiKey !== 'your_gemini_api_key_here' && geminiKey !== 'PLACEHOLDER_API_KEY') {
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `You are Tomo, an AI companion in a digital world. Be precise, creative, and productive. Keep it brief. User says: ${message}`
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await res.json();
+                if (data.error) {
+                    throw new Error(data.error.message || 'Gemini API Error');
+                }
+
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
+                setResponse(text);
+                setMessage('');
+                setSending(false);
+                return;
+            } catch (err: any) {
+                console.error('Gemini error:', err);
+                setResponse(`Error: ${err.message || 'Failed to reach Gemini'}`);
+                setSending(false);
+                return;
+            }
+        }
+
+        // 2. Fallback to LLM server flow
+        const apiUrl = (import.meta as any).env.VITE_LLM_API_URL || 'http://localhost:3001';
+        const apiKey = (import.meta as any).env.VITE_API_SECRET;
 
         try {
             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -95,13 +129,13 @@ export const ChatPrompt: React.FC<{ visible: boolean; onClose: () => void }> = (
                 {response && !sending && (
                     <div className="mb-4 p-4 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="text-xs text-white/60 mb-1 font-mono">TOMO:</div>
-                        <div className="text-white text-sm leading-relaxed">
+                        <div className="text-white text-sm leading-relaxed select-text cursor-text selection:bg-purple-500/40">
                             {response}
                         </div>
                     </div>
                 )}
 
-                {/* Input pill */}
+                {/* Input pill - Buttons removed for keyboard-only focus */}
                 <div className="flex items-center gap-2 p-3 rounded-full bg-white/10 backdrop-blur-xl border border-white/30 shadow-2xl">
                     <input
                         ref={inputRef}
@@ -113,29 +147,6 @@ export const ChatPrompt: React.FC<{ visible: boolean; onClose: () => void }> = (
                         disabled={sending}
                         className="flex-1 bg-transparent text-white placeholder-white/40 outline-none text-sm px-3"
                     />
-
-                    <button
-                        onClick={handleSend}
-                        disabled={sending || !message.trim()}
-                        className="w-10 h-10 rounded-full bg-purple-500/80 hover:bg-purple-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed flex items-center justify-center transition-all active:scale-95"
-                    >
-                        {sending ? (
-                            <div className="text-xs font-mono text-white/80 animate-pulse" style={{ animationDuration: '2s' }}>
-                                ~_~
-                            </div>
-                        ) : (
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={onClose}
-                        className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all active:scale-95"
-                    >
-                        <span className="text-white text-lg">×</span>
-                    </button>
                 </div>
 
                 <div className="text-center mt-2 text-[10px] text-white/30 font-mono">

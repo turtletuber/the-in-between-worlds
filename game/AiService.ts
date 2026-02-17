@@ -1,5 +1,4 @@
 
-
 export class AiService {
     private static instance: AiService;
 
@@ -80,6 +79,52 @@ export class AiService {
         try {
             const startTime = performance.now();
 
+            // 1. Direct Gemini Call (if API key provided in .env)
+            const geminiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+            if (geminiKey && geminiKey !== 'your_gemini_api_key_here' && geminiKey !== 'PLACEHOLDER_API_KEY') {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [
+                                ...history.map(h => ({
+                                    role: h.role === 'user' ? 'user' : 'model',
+                                    parts: [{ text: h.content }]
+                                })),
+                                {
+                                    role: 'user',
+                                    parts: [{ text: `You are Tomo, an AI companion in "The In-Between Worlds". Your physical form is Flo. Be precise, creative, and productive. Keep it brief. User says: ${message}` }]
+                                }
+                            ]
+                        })
+                    });
+
+                    const data = await res.json();
+                    if (data.error) throw new Error(data.error.message || 'Gemini API Error');
+
+                    const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
+
+                    // Report Latency & Model
+                    const latency = Math.round(performance.now() - startTime);
+                    window.dispatchEvent(new CustomEvent('ai-latency', { detail: { latency, model: 'gemini-2.0-flash' } }));
+                    window.dispatchEvent(new CustomEvent('ai-model-active', { detail: { model: 'gemini-2.0-flash' } }));
+
+                    // Simulate Streaming for UX
+                    const chunks = fullText.split(/(?=\s)/g);
+                    for (const chunk of chunks) {
+                        onChunk(chunk);
+                        await new Promise(resolve => setTimeout(resolve, 10 + Math.random() * 20));
+                    }
+
+                    return fullText;
+                } catch (geminiError: any) {
+                    console.error('Direct Gemini call failed:', geminiError);
+                    throw geminiError; // Rethrow to let the main catch block handle it
+                }
+            }
+
+            // 2. Fallback to Server
             const response = await fetch(`${this.llmEndpoint}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -99,11 +144,9 @@ export class AiService {
             window.dispatchEvent(new CustomEvent('ai-model-active', { detail: { model: activeModel } }));
 
             // Simulate Streaming for UX
-            // We split by words to make it feel "typed"
             const chunks = fullText.split(/(?=\s)/g);
             for (const chunk of chunks) {
                 onChunk(chunk);
-                // Tiny delay to simulate typing speed
                 await new Promise(resolve => setTimeout(resolve, 10 + Math.random() * 20));
             }
 
@@ -111,7 +154,7 @@ export class AiService {
 
         } catch (e: any) {
             console.error('AI Service Error:', e);
-            const errorMsg = `Synaptic Stream Unstable (${e.message || 'Connection Refused'}). Endpoint: ${this.llmEndpoint}`;
+            const errorMsg = `Synaptic Stream Unstable (${e.message || 'Connection Refused'}).`;
             onChunk(`[ ${errorMsg} ]`);
             return errorMsg;
         }
@@ -194,4 +237,3 @@ export class AiService {
         }
     }
 }
-

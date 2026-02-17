@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { AiService } from '../game/AiService';
 
-interface ChatMessage {
-    role: 'user' | 'assistant' | 'system';
+interface AnnouncementMessage {
+    role: 'assistant' | 'system';
     content: string;
+    timestamp: string;
 }
 
 export const SidePanelOverlay: React.FC = () => {
     const [isVisible, setIsVisible] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<AnnouncementMessage[]>([]);
 
     const initialGreeting = `(^_~) If you've set up Tomo at this point, you are probably just curious.
 
@@ -18,23 +18,34 @@ I will handle speeding things up, so there is no value in trying to rush. In fac
 
 My approach will be ensuring you stay in a state of play about achieving whatever it is that you are working towards. Like learning a new skill, getting some tasks off your plate, or just someone to bounce some ideas off of. 
 
-My goal is to keep you in flow. Oh and I'm powered by Tomo, our orchestration layer on your favorite local model. Tomo is short for Tomodatchi, the Japanese word for friends.
+My goal is to keep you in flow. Oh and I'm powered by Tomo, an orchestration layer making any model personal. Tomo is short for Tomodatchi, the Japanese word for friends.
 
 It's not just me, let's meet the squad.
 
 - Flo`;
 
-    const [input, setInput] = useState('');
-    const [isThinking, setIsThinking] = useState(false);
-    const [tokens, setTokens] = useState(0);
-    const [latency, setLatency] = useState(0);
+    const [logCount, setLogCount] = useState(0);
+    const [uptime, setUptime] = useState('00:00:00');
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
     // Scroll to bottom effect
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setLogCount(messages.length);
     }, [messages]);
+
+    // Uptime simulation
+    useEffect(() => {
+        const start = Date.now();
+        const interval = setInterval(() => {
+            const diff = Date.now() - start;
+            const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+            const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            setUptime(`${h}:${m}:${s}`);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Listen for Arm Events from 3D world
     useEffect(() => {
@@ -42,90 +53,33 @@ It's not just me, let's meet the squad.
             setIsVisible(e.detail.isOpen);
         };
 
+        const handleAnnouncement = (e: CustomEvent) => {
+            const newMessage: AnnouncementMessage = {
+                role: e.detail.role || 'system',
+                content: e.detail.content,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            setMessages(prev => [...prev, newMessage]);
+        };
+
         window.addEventListener('side-panel-state', handleStateChange as EventListener);
-
-        // AI Metrics listeners
-        const handleLatency = (e: CustomEvent) => setLatency(e.detail.latency);
-        const handleTokens = (e: CustomEvent) => setTokens(prev => prev + e.detail.tokens);
-
-        window.addEventListener('ai-latency', handleLatency as EventListener);
-        window.addEventListener('ai-tokens', handleTokens as EventListener);
+        window.addEventListener('system-announcement', handleAnnouncement as EventListener);
 
         const handleGreeting = () => {
-            setMessages([{ role: 'assistant', content: initialGreeting }]);
-            //setIsVisible(true);
+            setMessages([{
+                role: 'assistant',
+                content: initialGreeting,
+                timestamp: new Date().toLocaleTimeString()
+            }]);
         };
         window.addEventListener('trigger-greeting', handleGreeting);
 
-        // RAPID MODE AUTO-OPEN REMOVED AS PER USER REQUEST
-
         return () => {
             window.removeEventListener('side-panel-state', handleStateChange as EventListener);
-            window.removeEventListener('ai-latency', handleLatency as EventListener);
-            window.removeEventListener('ai-tokens', handleTokens as EventListener);
+            window.removeEventListener('system-announcement', handleAnnouncement as EventListener);
             window.removeEventListener('trigger-greeting', handleGreeting);
         };
     }, []);
-
-    // Auto-focus when visible
-    useEffect(() => {
-        if (isVisible) {
-            // Small timeout to ensure DOM is ready
-            const timer = setTimeout(() => {
-                inputRef.current?.focus();
-            }, 50);
-            return () => clearTimeout(timer);
-        }
-    }, [isVisible]);
-
-    const handleSend = async () => {
-        if (!input.trim() || isThinking) return;
-
-        const userMsg = input;
-        setInput('');
-        setIsThinking(true);
-
-        // Add User Message and Assistant Placeholder atomically
-        setMessages(prev => [
-            ...prev,
-            { role: 'user', content: userMsg },
-            { role: 'assistant', content: '' }
-        ]);
-
-        try {
-            // Context History
-            const history = messages.slice(-10).map(m => ({
-                role: m.role === 'user' ? 'user' : 'assistant',
-                content: m.content
-            }));
-
-            await AiService.getInstance().sendMessage(userMsg, history, (chunk) => {
-                setMessages(prev => {
-                    const newMsgs = [...prev];
-                    const lastIndex = newMsgs.length - 1;
-                    const lastMsg = { ...newMsgs[lastIndex] }; // Shallow copy to enforce immutability
-
-                    if (lastMsg.role === 'assistant') {
-                        lastMsg.content += chunk;
-                        newMsgs[lastIndex] = lastMsg;
-                    }
-                    return newMsgs;
-                });
-            });
-        } catch (e) {
-            console.error(e);
-            setMessages(prev => [...prev, { role: 'system', content: 'Connection Error.' }]);
-        } finally {
-            setIsThinking(false);
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') handleSend();
-        if (e.key === 'Escape') {
-            window.dispatchEvent(new CustomEvent('close-side-panel'));
-        }
-    };
 
     if (!isVisible) return null;
 
@@ -136,16 +90,16 @@ It's not just me, let's meet the squad.
                 transform: 'perspective(1000px) rotateY(5deg)',
                 transformOrigin: 'left bottom'
             }}
-            onPointerDown={(e) => e.stopPropagation()} // Stop click-drag passing to OrbitControls
-            onWheel={(e) => e.stopPropagation()} // Stop scroll passing to Zoom logic
+            onPointerDown={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
         >
             {/* Glass Panel Background */}
             <div className="absolute inset-0 bg-[#001122]/90 backdrop-blur-md border border-cyan-500/50 rounded-tr-3xl rounded-bl-xl shadow-[0_0_30px_rgba(0,255,255,0.2)]"></div>
 
             {/* Header */}
             <div className="relative z-10 px-6 py-4 border-b border-cyan-500/30 flex justify-between items-center bg-black/20 rounded-tr-3xl">
-                <div className="text-cyan-400 font-mono tracking-wider text-sm drop-shadow-[0_0_5px_rgba(0,255,255,0.8)]">
-                    ~/tomo/system/neuro-orchestration/..
+                <div className="text-cyan-400 font-mono tracking-wider text-sm drop-shadow-[0_0_5px_rgba(0,255,255,0.8)] uppercase">
+                    ~/tomo/system/announcements/..
                 </div>
                 <div className="flex gap-4 items-center">
                     <div className="flex gap-2">
@@ -154,7 +108,7 @@ It's not just me, let's meet the squad.
                     </div>
                     {/* Close Button */}
                     <button
-                        onClick={() => window.dispatchEvent(new CustomEvent('close-side-panel'))}
+                        onClick={() => setIsVisible(false)}
                         className="text-cyan-500/50 hover:text-cyan-400 hover:scale-110 transition-all font-bold text-xl"
                     >
                         ✕
@@ -162,83 +116,53 @@ It's not just me, let's meet the squad.
                 </div>
             </div>
 
-            {/* Chat History Area - SCROLLABLE & SELECTABLE! */}
+            {/* Announcements Area - SCROLLABLE & SELECTABLE! */}
             <div
-                className="relative z-10 flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent"
+                className="relative z-10 flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent"
                 onWheel={(e) => e.stopPropagation()}
             >
                 {messages.length === 0 && (
                     <div className="text-cyan-500/50 text-center mt-20 italic">
-                        System ready. Priming synaptic pathways...
+                        Monitoring synaptic frequency... No active announcements.
                     </div>
                 )}
 
                 {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div key={idx} className="flex flex-col items-start animate-fade-in">
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className="text-[10px] text-cyan-600 font-bold uppercase tracking-tighter">[{msg.timestamp}]</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${msg.role === 'assistant' ? 'border-purple-500/50 text-purple-400' : 'border-cyan-500/50 text-cyan-400'
+                                } font-bold uppercase`}>
+                                {msg.role}
+                            </span>
+                        </div>
                         <div className={`
-                            max-w-[85%] px-4 py-2 rounded-lg border
-                            ${msg.role === 'user'
-                                ? 'bg-cyan-900/30 border-cyan-500/30 text-cyan-100 rounded-br-none'
-                                : 'bg-black/40 border-cyan-500/20 text-cyan-300 rounded-bl-none shadow-[0_0_10px_rgba(0,255,255,0.1)]'}
+                            max-w-full px-4 py-3 rounded-lg border bg-black/40 border-cyan-500/20 text-cyan-300 rounded-bl-none shadow-[0_0_10px_rgba(0,255,255,0.1)]
                         `}>
-                            {/* Make text selectable */}
-                            <span className="select-text whitespace-pre-wrap leading-relaxed">
+                            <span className="select-text cursor-text selection:bg-cyan-500/40 whitespace-pre-wrap leading-relaxed block">
                                 {msg.content}
                             </span>
                         </div>
                     </div>
                 ))}
 
-                {/* Thinking Indicator */}
-                {isThinking && messages[messages.length - 1]?.content === '' && (
-                    <div className="text-cyan-500/50 text-xs animate-pulse ml-2">{'>>>'} Receiving Stream...</div>
-                )}
-
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="relative z-10 p-4 bg-black/40 border-t border-cyan-500/30 rounded-bl-xl">
-                <div className="flex items-center gap-3">
-                    <span className="text-cyan-500 font-bold text-lg">{'>'}</span>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            e.stopPropagation();
-                            handleKeyDown(e);
-                        }}
-                        onKeyUp={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Enter cognitive thought..."
-                        className="flex-1 bg-transparent border-none outline-none text-cyan-100 placeholder-cyan-700/50 font-mono h-10 select-text"
-                        autoComplete="off"
-                    />
-                    <button
-                        onClick={handleSend}
-                        className="px-4 py-2 bg-cyan-900/50 hover:bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 rounded transition-colors text-xs uppercase font-bold"
-                    >
-                        Send
-                    </button>
-                </div>
-            </div>
-
             {/* Metrics Footer */}
-            <div className="relative z-10 px-6 py-2 border-t border-cyan-500/10 flex justify-between items-center bg-black/40 rounded-bl-xl">
-                <div className="flex gap-4">
+            <div className="relative z-10 px-6 py-3 border-t border-cyan-500/10 flex justify-between items-center bg-black/40 rounded-bl-xl">
+                <div className="flex gap-6">
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-cyan-700 uppercase">Tokens</span>
-                        <span className="text-cyan-400 font-bold text-xs">{tokens.toLocaleString()}</span>
+                        <span className="text-[10px] text-cyan-700 uppercase">Entries</span>
+                        <span className="text-cyan-400 font-bold text-xs">{logCount.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-cyan-700 uppercase">Latency</span>
-                        <span className="text-cyan-400 font-bold text-xs">{latency}ms</span>
+                        <span className="text-[10px] text-cyan-700 uppercase">Uptime</span>
+                        <span className="text-cyan-400 font-bold text-xs">{uptime}</span>
                     </div>
                 </div>
-                <div className="text-[9px] text-cyan-900 tracking-widest uppercase">
-                    Synaptic Stream Active
+                <div className="text-[9px] text-cyan-900 tracking-widest uppercase font-bold">
+                    System Monitor Active
                 </div>
             </div>
 

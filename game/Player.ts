@@ -11,7 +11,7 @@ export interface PlayerState {
     targetTilt: number;
 }
 
-export const keys = { w: false, a: false, s: false, d: false, space: false };
+export const keys = { w: false, a: false, s: false, d: false, space: false, down: false };
 
 export const playerState: PlayerState = {
     position: new THREE.Vector3(4, 1.5, 4),
@@ -58,7 +58,8 @@ export function updatePlayerMovement(
     currentZoom: any,
     delta: number,
     time: number,
-    worldElements: THREE.Object3D[]
+    worldElements: THREE.Object3D[],
+    currentWorld: string
 ) {
     if (!playerGroup) return;
 
@@ -126,7 +127,10 @@ export function updatePlayerMovement(
         // Floating Ability: Rise up and stay up
         const targetFloatY = playerGroup.position.y + 2.0;
         playerGroup.position.y = THREE.MathUtils.lerp(playerGroup.position.y, targetFloatY, delta * 2.0);
-    } else {
+    } else if (keys.down && currentWorld === 'CosmicHub') {
+        const targetSinkY = playerGroup.position.y - 2.0;
+        playerGroup.position.y = THREE.MathUtils.lerp(playerGroup.position.y, targetSinkY, delta * 2.0);
+    } else if (currentWorld !== 'CosmicHub') {
         if (intersects.length > 0) {
             const groundY = intersects[0].point.y;
             const targetY = groundY + hoverBase;
